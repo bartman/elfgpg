@@ -50,9 +50,9 @@
 static inline void
 dbg_dump_to_file( const char *fname, void* data, size_t len )
 {
-  FILE *f = fopen( fname, "w" );
-  fwrite( data, len, 1, f );
-  fclose(f);
+	FILE *f = fopen( fname, "w" );
+	fwrite( data, len, 1, f );
+	fclose(f);
 }
 
 

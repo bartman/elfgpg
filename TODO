@@ -1,0 +1,4 @@
+prepare_elfpgp_sections need cleanup of something fails.
+elfpgp --dump is needed (dump list of .pgp* segments and info about them)
+elfpgp --remove is needed
+write a man page

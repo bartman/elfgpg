@@ -30,25 +30,25 @@
 
 typedef struct elfsign_options_s {
 
-  enum { NONE=0, SIGN, VERIFY } operation;
+	enum { NONE=0, SIGN, VERIFY } operation;
 
-  /* debug level */
-  int verbose;
+	/* debug level */
+	int verbose;
 
-  /* force through some errors */
-  int force;
+	/* force through some errors */
+	int force;
 
-  /* maximum width of a file name */
-  int file_name_max;
-  
-  /* what key to use */
-  char *keyname;
+	/* maximum width of a file name */
+	int file_name_max;
 
-  /* what keyring to use */
-  char *keyring;
+	/* what key to use */
+	char *keyname;
 
-  /* algorithm for signing */
-  char *algname;
+	/* what keyring to use */
+	char *keyring;
+
+	/* algorithm for signing */
+	char *algname;
 
 
 } elfsign_options_t;
@@ -58,13 +58,13 @@ extern elfsign_options_t *opts;
 static inline void
 init_options( void )
 {
-  opts->operation = NONE;
-  opts->verbose = NORM;
-  opts->force   = 0;
-  opts->file_name_max = 10;
-  opts->keyname = NULL;
-  opts->keyring = NULL;
-  opts->algname = NULL;
+	opts->operation = NONE;
+	opts->verbose = NORM;
+	opts->force   = 0;
+	opts->file_name_max = 10;
+	opts->keyname = NULL;
+	opts->keyring = NULL;
+	opts->algname = NULL;
 }
 
 

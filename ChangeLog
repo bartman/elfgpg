@@ -1,3 +1,9 @@
+Tue Apr 29 20:12:51 2003  Bart Trojanowski  <bart@jukie.net>
+
+	* src/*: cleaned up the code (via indent + manual changes),
+		added more debug info for --verbose traces
+	* BUGS: added a bugs file; intended to list all know issues
+
 Fri Apr 25 21:46:32 2003  Bart Trojanowski  <bart@jukie.net>
 
 	* 0.1.2 release

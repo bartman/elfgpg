@@ -223,6 +223,9 @@ distdir: $(DISTFILES)
 	    || cp -p $$d/$$file $(distdir)/$$file || :; \
 	  fi; \
 	done
+main.o: main.c ../config.h debug.h options.h sign.h verify.h
+sign.o: sign.c options.h debug.h sign.h elfpgp.h elfhelp.h
+verify.o: verify.c options.h debug.h verify.h elfpgp.h elfhelp.h
 
 info-am:
 info: info-am

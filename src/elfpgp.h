@@ -38,9 +38,9 @@
 /* .pgptab entry structure */
 typedef struct
 {
-  Elf32_Word    pt_type;		/* Type of pgp table entry */
-  Elf32_Word    pt_size;                /* Symbol size */
-  Elf32_Section pt_shndx;               /* Section index */
+	Elf32_Word    pt_type;		/* Type of pgp table entry */
+	Elf32_Word    pt_size;		/* Symbol size */
+	Elf32_Section pt_shndx;		/* Section index */
 } Elf32_Pgp;
 
 
