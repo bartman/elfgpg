@@ -1,6 +1,6 @@
 /****************************************************************************
 * 
-* $Id: debug.h,v 1.3 2001/07/03 21:46:18 bart Exp $
+* $Id: debug.h,v 1.1.1.1 2001/07/10 00:20:14 bartron Exp $
 * 
 * Copyright (C) 2001 Bart Trojanowski <bart@jukie.net>
 *
@@ -61,14 +61,8 @@ dbg_dump_to_file( const char *fname, void* data, size_t len )
 /****************************************************************************
 * 
 * $Log: debug.h,v $
-* Revision 1.3  2001/07/03 21:46:18  bart
-* added NORM print level
-*
-* Revision 1.2  2001/06/26 04:01:03  bart
-* added a lot of elf processing... almost complete implementation
-*
-* Revision 1.1  2001/06/19 23:56:49  bart
-* first cut
+* Revision 1.1.1.1  2001/07/10 00:20:14  bartron
+* initial import
 *
 * 
 *****************************************************************************/

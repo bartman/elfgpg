@@ -1,6 +1,6 @@
 /****************************************************************************
 * 
-* $Id: sign.c,v 1.10 2001/07/03 23:46:56 bart Exp $
+* $Id: sign.c,v 1.1.1.1 2001/07/10 00:20:14 bartron Exp $
 * 
 * Copyright (C) 2001 Bart Trojanowski <bart@jukie.net>
 *
@@ -29,6 +29,7 @@
 #include <gpgme.h>
 #include <termios.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "options.h"
 #include "sign.h"
@@ -89,7 +90,7 @@ linelen (const char *s)
 static char pass[1024] = {0,};
   
 static const char *
-passphrase_cb ( void *opaque, const char *desc, void *r_hd )
+passphrase_cb ( void *opaque, const char *desc, void **r_hd )
 {
   struct termios term;
   static struct termios termsave;
@@ -101,7 +102,7 @@ passphrase_cb ( void *opaque, const char *desc, void *r_hd )
     return NULL;
   }
   
-  ES_PRINT(DEBUG,__PRETTY_FUNCTION__ ": getting password\n");
+  ES_PRINT(DEBUG,"%s: getting password\n", __PRETTY_FUNCTION__);
   
   /* get the description parts 
   * [ code borowed from Sylpheed; thanks to Werner Koch <wk@gnupg.org> ]
@@ -169,7 +170,7 @@ configure_gpg( GpgmeCtx *ctx )
 {
   GpgmeError err;
 
-  ES_PRINT(DEBUG,__PRETTY_FUNCTION__ ": gpgme configuration\n");
+  ES_PRINT(DEBUG,"%s: gpgme configuration\n", __PRETTY_FUNCTION__);
 
   err = gpgme_new(ctx);
   if( err ) {
@@ -193,7 +194,7 @@ pgptab_add( sign_session_t *s, Elf32_Pgp *p )
   int err = 0;
   char *name;
   
-  ES_PRINT(DEBUG,__PRETTY_FUNCTION__ ": inserting pgptab entry\n");
+  ES_PRINT(DEBUG,"%s: inserting pgptab entry\n", __PRETTY_FUNCTION__);
   
   if( p->pt_type == ELF_PT_SCN )
     if( !(name = elf_strptr(s->elf, s->ehdr->e_shstrndx, s->shdr->sh_name)) )
@@ -249,8 +250,8 @@ read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
   void *src_ptr, *dst_ptr;
   size_t src_len, dst_len;
 
-  ES_PRINT(DEBUG, __PRETTY_FUNCTION__ "(%p, %p, %d, %p)\n",
-      opaque, buff, blen, bused );
+  ES_PRINT(DEBUG, "%s(%p, %p, %d, %p)\n",
+		  __PRETTY_FUNCTION__, opaque, buff, blen, bused );
   
   dst_ptr = buff;
   dst_len = blen;
@@ -363,7 +364,7 @@ open_elf_file( sign_session_t *s )
 {
   int err;
   
-  ES_PRINT(DEBUG,__PRETTY_FUNCTION__ ": opening file as elf\n");
+  ES_PRINT(DEBUG,"%s: opening file as elf\n", __PRETTY_FUNCTION__);
   
   s->elf = elf_begin( s->fd, ELF_C_RDWR, NULL );
   switch( elf_kind(s->elf) ) {
@@ -409,7 +410,7 @@ prepare_elfpgp_sections( sign_session_t *s )
 {
   int err = 1;
 
-  ES_PRINT(DEBUG, __PRETTY_FUNCTION__ ": locating the .pgptab section\n");
+  ES_PRINT(DEBUG, "%s: locating the .pgptab section\n", __PRETTY_FUNCTION__);
 
   if( (s->pgptab_scn = elf_findscn(s->elf, ".pgptab")) ) {
     /* section exists, get the data */
@@ -443,7 +444,7 @@ prepare_elfpgp_sections( sign_session_t *s )
     goto bail;
   }
 
-  ES_PRINT(DEBUG, __PRETTY_FUNCTION__ ": locating the .pgpsig section\n");
+  ES_PRINT(DEBUG, "%s: locating the .pgpsig section\n", __PRETTY_FUNCTION__);
 
   if( (s->pgpsig_scn = elf_findscn( s->elf, ".pgpsig" )) ) {
     /* section exists, get the data */
@@ -494,7 +495,7 @@ generate_pgptab( sign_session_t *s )
   int err = -1;
   Elf32_Pgp pgp;
   
-  ES_PRINT(DEBUG,__PRETTY_FUNCTION__ ": generating .pgptab\n");
+  ES_PRINT(DEBUG,"%s: generating .pgptab\n", __PRETTY_FUNCTION__);
   
   /* first add the elf header */
   pgp.pt_type = ELF_PT_EHDR;
@@ -508,7 +509,7 @@ generate_pgptab( sign_session_t *s )
 
   /* finally add all of the sections */
   s->scn=NULL;
-  while( s->shdr = elf32_getshdr( s->scn = elf_nextscn(s->elf,s->scn) ) ) {
+  while( (s->shdr = elf32_getshdr( s->scn = elf_nextscn(s->elf,s->scn) ) ) ) {
     char *name = elf_strptr(s->elf, s->shdr->sh_link, s->shdr->sh_name);
     if( !name || s->shdr->sh_type == SHT_NULL
 	|| s->shdr->sh_type == SHT_NOBITS )
@@ -554,7 +555,7 @@ generate_pgpsig( sign_session_t *s )
   GpgmeData in, out;
   size_t oslen;
 
-  ES_PRINT(DEBUG, __PRETTY_FUNCTION__ ": generating pgp signature\n");
+  ES_PRINT(DEBUG, "%s: generating pgp signature\n", __PRETTY_FUNCTION__);
 
   /* start processing creating the .pgptab at elf header */
   s->tab_index = 0;
@@ -618,7 +619,7 @@ commit_elf_to_file( sign_session_t *s )
 {
   int err = 0;
 
-  ES_PRINT(DEBUG, __PRETTY_FUNCTION__ ": writing changes to disk\n");
+  ES_PRINT(DEBUG, "%s: writing changes to disk\n", __PRETTY_FUNCTION__);
   if( elf_update( s->elf, ELF_C_WRITE ) == -1 ) {
     ES_PRINT(ERROR, "elf_update: %s\n", elf_errmsg(-1));
     err = -1;
@@ -679,35 +680,8 @@ do_elfsign( const char *file, int fd )
 /****************************************************************************
 * 
 * $Log: sign.c,v $
-* Revision 1.10  2001/07/03 23:46:56  bart
-* major renaming of files.
-*
-* Revision 1.9  2001/07/03 21:46:52  bart
-* made printing of signature size the default
-*
-* Revision 1.8  2001/07/03 19:41:20  bart
-* first respectable version - it works
-*
-* Revision 1.7  2001/07/03 13:16:14  bart
-* major rework on read callback function
-*
-* Revision 1.6  2001/06/30 19:09:43  bart
-* cleanup on exit conditions - seems to work.
-*
-* Revision 1.5  2001/06/27 02:51:05  bart
-* added SHT_PGPTAB and SHT_PGPSIG section types; fixed size of pt_type to be a 32 bit entity;
-*
-* Revision 1.4  2001/06/26 12:41:19  bart
-* signature insertion now works
-*
-* Revision 1.3  2001/06/26 04:01:03  bart
-* added a lot of elf processing... almost complete implementation
-*
-* Revision 1.2  2001/06/21 04:00:08  bart
-* first cut of signing... almost there.
-*
-* Revision 1.1  2001/06/19 23:56:49  bart
-* first cut
+* Revision 1.1.1.1  2001/07/10 00:20:14  bartron
+* initial import
 *
 * 
 *****************************************************************************/

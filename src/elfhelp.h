@@ -1,14 +1,45 @@
+/****************************************************************************
+* 
+* $Id: elfhelp.h,v 1.1.1.1 2001/07/10 00:20:14 bartron Exp $
+* 
+* Copyright (C) 2001 Bart Trojanowski <bart@jukie.net>
+*
+* This file is a part of the elfsign utility
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+* 
+*****************************************************************************/
 #ifndef ELFSIGN_ELFHELP_H
 #define ELFSIGN_ELFHELP_H
+
+#include <string.h>
 
 /* create_data() and create_section() was taken from libelf-examples-0.1.0 
 * written by Michael Riepe <michael@stud.uni-hannover.de>
 */
 
+static Elf_Data* create_data(Elf_Scn *scn, void *buf, size_t size, 
+		Elf_Type type, size_t align) __attribute__ ((unused));
+static Elf_Scn* create_section(Elf *elf, unsigned type, char *name) 
+	__attribute__ ((unused));
+
 #define elferr(str) fprintf(stderr, "%s: %s\n", str, elf_errmsg(-1))
 
 static Elf_Data*
-create_data(Elf_Scn *scn, void *buf, size_t size, Elf_Type type, size_t align) {
+create_data(Elf_Scn *scn, void *buf, size_t size, Elf_Type type, size_t align) 
+{
     Elf_Data *data;
 
     if ((data = elf_newdata(scn))) {
@@ -23,7 +54,8 @@ create_data(Elf_Scn *scn, void *buf, size_t size, Elf_Type type, size_t align) {
 }
 
 static Elf_Scn*
-create_section(Elf *elf, unsigned type, char *name) {
+create_section(Elf *elf, unsigned type, char *name) 
+{
     static char shstrtab[] = ".shstrtab";
     Elf32_Ehdr *ehdr;
     Elf32_Shdr *shdr;
@@ -100,3 +132,11 @@ elf_findscn(Elf *elf, const char *name) {
 
 
 #endif
+/****************************************************************************
+* 
+* $Log: elfhelp.h,v $
+* Revision 1.1.1.1  2001/07/10 00:20:14  bartron
+* initial import
+*
+* 
+*****************************************************************************/

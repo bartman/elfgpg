@@ -1,6 +1,6 @@
 /****************************************************************************
 * 
-* $Id: sign.h,v 1.2 2001/07/03 23:46:56 bart Exp $
+* $Id: sign.h,v 1.1.1.1 2001/07/10 00:20:14 bartron Exp $
 * 
 * Copyright (C) 2001 Bart Trojanowski <bart@jukie.net>
 *
@@ -30,11 +30,8 @@ int do_elfsign( const char *name, int fd );
 /****************************************************************************
 * 
 * $Log: sign.h,v $
-* Revision 1.2  2001/07/03 23:46:56  bart
-* major renaming of files.
-*
-* Revision 1.1  2001/06/19 23:56:49  bart
-* first cut
+* Revision 1.1.1.1  2001/07/10 00:20:14  bartron
+* initial import
 *
 * 
 *****************************************************************************/

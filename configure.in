@@ -4,16 +4,18 @@ AC_INIT(src/main.c)
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(config.h)
 
-AM_INIT_AUTOMAKE(elfpgp, 0.1.0)
+AM_INIT_AUTOMAKE(elfpgp, 0.1.1)
 
 dnl Checks for programs.
 AC_PROG_CC
 
 dnl Checks for libraries.
+AC_CHECK_LIB(elf, elf_version)
+AC_CHECK_LIB(gpgme, gpgme_new)
 
 dnl Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS(strings.h unistd.h)
+AC_CHECK_HEADERS(strings.h unistd.h gpgme.h libelf/libelf.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST

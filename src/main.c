@@ -1,6 +1,6 @@
 /****************************************************************************
 * 
-* $Id: main.c,v 1.6 2001/07/03 23:46:56 bart Exp $
+* $Id: main.c,v 1.1.1.1 2001/07/10 00:20:14 bartron Exp $
 * 
 * Copyright (C) 2001 Bart Trojanowski <bart@jukie.net>
 *
@@ -22,7 +22,7 @@
 * 
 *****************************************************************************/
 
-#define COPYRIGHT "(C) 2001 Bart Trojanowski <bart@jukie.net>"
+#define COPYRIGHT "(C) 2001-2003 Bart Trojanowski <bart@jukie.net>"
 
 #define _GNU_SOURCE
 
@@ -34,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
 
 #include <libelf.h>
 #include <getopt.h>
@@ -189,7 +190,7 @@ int
 test_file( const char *file, int fd, int mode )
 {
   static int uid=-1, gid, euid, egid;
-  int i, ret=-1;
+  int ret=-1;
   struct stat st;
 
   ES_PRINT(DEBUG,"testing file %s\n",file);
@@ -302,8 +303,18 @@ main( int argc, char **argv )
   if (elf_version(EV_CURRENT) == EV_NONE) {
     ES_PRINT(ERROR, "%s: %s\n", argv[0], elf_errmsg(-1));
   }    
-  
+
   ES_PRINT(DEBUG,"processing %d files...\n",count);
+  for(i=0;i<count;i++) {
+    const char * file;
+    size_t file_name_len;
+    file = argv[first+i];
+    file_name_len = strlen (file);
+    if ( opts->file_name_max < file_name_len )
+      opts->file_name_max = file_name_len;
+  }
+  opts->file_name_max += 2;
+  
   for(i=0;i<count;i++) {
     const char * file;
     int fd;
@@ -343,23 +354,8 @@ bail:
 /****************************************************************************
 * 
 * $Log: main.c,v $
-* Revision 1.6  2001/07/03 23:46:56  bart
-* major renaming of files.
-*
-* Revision 1.5  2001/06/26 12:41:19  bart
-* signature insertion now works
-*
-* Revision 1.4  2001/06/21 03:59:53  bart
-* further cleanup of parameter checking
-*
-* Revision 1.3  2001/06/20 23:52:09  bart
-* cleanup of error checking in main()
-*
-* Revision 1.2  2001/06/20 00:01:01  bart
-* added copyright
-*
-* Revision 1.1  2001/06/19 23:56:49  bart
-* first cut
+* Revision 1.1.1.1  2001/07/10 00:20:14  bartron
+* initial import
 *
 * 
 *****************************************************************************/

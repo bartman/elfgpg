@@ -1,6 +1,6 @@
-# Makefile.in generated automatically by automake 1.4 from Makefile.am
+# Makefile.in generated automatically by automake 1.4-p6 from Makefile.am
 
-# Copyright (C) 1994, 1995-8, 1999 Free Software Foundation, Inc.
+# Copyright (C) 1994, 1995-8, 1999, 2001 Free Software Foundation, Inc.
 # This Makefile.in is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -61,16 +61,16 @@ PACKAGE = @PACKAGE@
 VERSION = @VERSION@
 ac_aux_dir = @ac_aux_dir@
 
-AUX_DIST = $(ac_aux_dir)/config.guess                         $(ac_aux_dir)/config.sub                         $(ac_aux_dir)/install-sh                         $(ac_aux_dir)/ltconfig                         $(ac_aux_dir)/ltmain.sh                         $(ac_aux_dir)/mdate-sh                         $(ac_aux_dir)/missing                         $(ac_aux_dir)/mkinstalldirs
+AUX_DIST = $(ac_aux_dir)/install-sh 			$(ac_aux_dir)/missing 			$(ac_aux_dir)/mkinstalldirs
 
-AUX_DIST_EXTRA = $(ac_aux_dir)/readline.m4                         $(ac_aux_dir)/sys_errlist.m4                         $(ac_aux_dir)/sys_siglist.m4
 
+AUX_DIST_EXTRA = 
 
 EXTRA_DIST = autogen.sh
 
 #AUTOMAKE_OPTIONS        = foreign
 SUBDIRS = src
-MAINTAINERCLEANFILES = Makefile.in aclocal.m4 configure config-h.in                         stamp-h.in $(AUX_DIST)
+MAINTAINERCLEANFILES = Makefile.in aclocal.m4 configure config-h.in 			stamp-h.in $(AUX_DIST)
 
 
 ACLOCAL = aclocal -I $(ac_aux_dir)
@@ -85,7 +85,7 @@ configure.in
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
-TAR = gtar
+TAR = tar
 GZIP_ENV = --best
 all: all-redirect
 .SUFFIXES:
@@ -168,7 +168,7 @@ maintainer-clean-recursive:
 	dot_seen=no; \
 	rev=''; list='$(SUBDIRS)'; for subdir in $$list; do \
 	  rev="$$subdir $$rev"; \
-	  test "$$subdir" = "." && dot_seen=yes; \
+	  test "$$subdir" != "." || dot_seen=yes; \
 	done; \
 	test "$$dot_seen" = "no" && rev=". $$rev"; \
 	target=`echo $@ | sed s/-recursive//`; \
@@ -210,7 +210,7 @@ TAGS: tags-recursive $(HEADERS) $(SOURCES) config.h.in $(TAGS_DEPENDENCIES) $(LI
 	  awk '    { files[$$0] = 1; } \
 	       END { for (i in files) print i; }'`; \
 	test -z "$(ETAGS_ARGS)config.h.in$$unique$(LISP)$$tags" \
-	  || (cd $(srcdir) && etags $(ETAGS_ARGS) $$tags config.h.in $$unique $(LISP) -o $$here/TAGS)
+	  || (cd $(srcdir) && etags -o $$here/TAGS $(ETAGS_ARGS) $$tags config.h.in $$unique $(LISP))
 
 mostlyclean-tags:
 

@@ -1,4 +1,4 @@
-/* config.h.in.  Generated automatically from configure.in by autoheader.  */
+/* config.h.in.  Generated automatically from configure.in by autoheader 2.13.  */
 
 /* Define to empty if the keyword does not work.  */
 #undef const
@@ -15,11 +15,23 @@
 /* Define if you have the strerror function.  */
 #undef HAVE_STRERROR
 
+/* Define if you have the <gpgme.h> header file.  */
+#undef HAVE_GPGME_H
+
+/* Define if you have the <libelf/libelf.h> header file.  */
+#undef HAVE_LIBELF_LIBELF_H
+
 /* Define if you have the <strings.h> header file.  */
 #undef HAVE_STRINGS_H
 
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
+
+/* Define if you have the elf library (-lelf).  */
+#undef HAVE_LIBELF
+
+/* Define if you have the gpgme library (-lgpgme).  */
+#undef HAVE_LIBGPGME
 
 /* Name of package */
 #undef PACKAGE

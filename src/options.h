@@ -1,6 +1,6 @@
 /****************************************************************************
 * 
-* $Id: options.h,v 1.3 2001/07/03 23:46:56 bart Exp $
+* $Id: options.h,v 1.1.1.1 2001/07/10 00:20:14 bartron Exp $
 * 
 * Copyright (C) 2001 Bart Trojanowski <bart@jukie.net>
 *
@@ -38,6 +38,9 @@ typedef struct elfsign_options_s {
 
   /* force through some errors */
   int force;
+
+  /* maximum width of a file name */
+  int file_name_max;
   
   /* what key to use */
   char *keyname;
@@ -59,6 +62,7 @@ init_options( void )
   opts->operation = NONE;
   opts->verbose = NORM;
   opts->force   = 0;
+  opts->file_name_max = 10;
   opts->keyname = NULL;
   opts->keyring = NULL;
   opts->algname = NULL;
@@ -69,14 +73,8 @@ init_options( void )
 /****************************************************************************
 * 
 * $Log: options.h,v $
-* Revision 1.3  2001/07/03 23:46:56  bart
-* major renaming of files.
-*
-* Revision 1.2  2001/07/03 21:46:18  bart
-* added NORM print level
-*
-* Revision 1.1  2001/06/19 23:56:49  bart
-* first cut
+* Revision 1.1.1.1  2001/07/10 00:20:14  bartron
+* initial import
 *
 * 
 *****************************************************************************/

@@ -1,0 +1,11 @@
+Thu Apr 24 20:40:04 2003  Bart Trojanowski  <bart@jukie.net>
+
+	* 0.1.1 release
+	* configure.in: now requires the presence of libgpgme and libelf
+	* README: updated with library dependencies
+	* src/*: cleaned up a lot of build warning messages,
+		updated the copyright message for 2003,
+		cleanup of output from the program
+	* src/Makefile.am: using unoptimized/debug CFLAGS settings
+
+

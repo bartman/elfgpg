@@ -1,6 +1,6 @@
 /****************************************************************************
 * 
-* $Id: verify.c,v 1.6 2001/07/03 23:46:56 bart Exp $
+* $Id: verify.c,v 1.1.1.1 2001/07/10 00:20:14 bartron Exp $
 * 
 * Copyright (C) 2001 Bart Trojanowski <bart@jukie.net>
 *
@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <gpgme.h>
 #include <termios.h>
+#include <stdlib.h>
 
 #include "options.h"
 #include "verify.h"
@@ -113,6 +114,10 @@ verify_status_string (GpgmeSigStat status)
       case GPGME_SIG_STAT_DIFF:
         s = ">1 sig";
         break;
+      default:
+	ES_PRINT(ERROR, "%s: unhandled status of %d\n", __PRETTY_FUNCTION__,
+			status);
+	break;
     }
     return s;
 }
@@ -123,6 +128,7 @@ print_short_sig_stat ( verify_session_t *s, GpgmeSigStat stat )
 {
   const char *id, *alg, *caps, *name, *email, *note;
   GpgmeKey key;
+  int rc;
 
   if( !(gpgme_get_sig_key( s->ctx, 0, &key)) ) {
     id    = gpgme_key_get_string_attr( key, GPGME_ATTR_KEYID, NULL, 0 );
@@ -133,19 +139,24 @@ print_short_sig_stat ( verify_session_t *s, GpgmeSigStat stat )
     note  = gpgme_key_get_string_attr( key, GPGME_ATTR_COMMENT, NULL, 0 );
   }
 
-  if( !(ES_PRINT(INFO,"%s: %-8s %s %s (%s) <%s>\n",
-  	  s->file, verify_status_string(stat),
-  	  id,name,note,email)) ) {
+  rc = ES_PRINT(INFO,"%-*s %-8s %s %s (%s) <%s>\n",
+  	  opts->file_name_max, s->file, 
+	  verify_status_string(stat),
+  	  id, name, note, email);
+
+  /* will show a less verbose output */
+  if( !(rc) ) {
     const char *fmt, *val;
     if( email ) {
-      fmt = "%s: %-8s <%s>\n";
+      fmt = "%-*s %-8s <%s>\n";
       val = email;
     } else {
-      fmt = "%s: %-8s %s\n";
+      fmt = "%-*s %-8s %s\n";
       val = id;
     }
     ES_PRINT(NORM, fmt,
-	s->file, verify_status_string(stat),
+	opts->file_name_max, s->file, 
+	verify_status_string(stat),
 	val);
   }
 }
@@ -183,8 +194,8 @@ read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
   void *src_ptr, *dst_ptr;
   size_t src_len, dst_len;
 
-  ES_PRINT(DEBUG, __PRETTY_FUNCTION__ "(%p, %p, %d, %p)\n",
-      opaque, buff, blen, bused );
+  ES_PRINT(DEBUG, "%s(%p, %p, %d, %p)\n",
+		  __PRETTY_FUNCTION__, opaque, buff, blen, bused );
   
   dst_ptr = buff;
   dst_len = blen;
@@ -313,17 +324,27 @@ init_process_elf( verify_session_t *s )
      
      } else if ( !(s->pgptab_hdr = elf32_getshdr(
 	     s->pgptab_scn = elf_findscn(s->elf, ".pgptab"))) ) {
-       ES_PRINT(ERROR, "%s: .pgptab: %s\n", s->file, elf_errmsg(-1));
+       if ( elf_errno() ) {
+          ES_PRINT(ERROR, "%s: find .pgptab: %s\n", s->file, elf_errmsg(-1));
+       } else {
+          ES_PRINT(NORM, "%-*s %-8s\n", opts->file_name_max, s->file,
+			  verify_status_string (GPGME_SIG_STAT_NOSIG));
+       }
        
      } else if ( !(s->pgptab_data = elf_getdata(s->pgptab_scn, NULL)) ) {
-       ES_PRINT(ERROR, "%s: .pgptab: %s\n", s->file, elf_errmsg(-1));
+       ES_PRINT(ERROR, "%s: data .pgptab: %s\n", s->file, elf_errmsg(-1));
        
      } else if ( !(s->pgpsig_hdr = elf32_getshdr(
 	     s->pgpsig_scn = elf_findscn(s->elf, ".pgpsig"))) ) {
-       ES_PRINT(ERROR, "%s: .pgpsig: %s\n", s->file, elf_errmsg(-1));
+       if ( elf_errno() ) {
+          ES_PRINT(ERROR, "%s: find .pgpsig: %s\n", s->file, elf_errmsg(-1));
+       } else {
+          ES_PRINT(NORM, "%-*s %-8s\n", opts->file_name_max, s->file,
+			  verify_status_string (GPGME_SIG_STAT_NOSIG));
+       }
        
      } else if ( !(s->pgpsig_data = elf_getdata(s->pgpsig_scn, NULL)) ) {
-       ES_PRINT(ERROR, "%s: .pgpsig: %s\n", s->file, elf_errmsg(-1));
+       ES_PRINT(ERROR, "%s: data .pgpsig: %s\n", s->file, elf_errmsg(-1));
        
      } else {
        err = 0;
@@ -352,8 +373,6 @@ process_elf( verify_session_t *s )
   GpgmeError err;
   GpgmeData sig, data;
   GpgmeSigStat status;
-  char *nota;
-  size_t oslen;
   
   /* start processing the .pgptab at the first entry */
   s->tab_index = 0;
@@ -441,23 +460,8 @@ do_elfverify( const char *file, int fd )
 /****************************************************************************
 * 
 * $Log: verify.c,v $
-* Revision 1.6  2001/07/03 23:46:56  bart
-* major renaming of files.
-*
-* Revision 1.5  2001/07/03 21:57:35  bart
-* even pretier printing of status
-*
-* Revision 1.4  2001/07/03 21:47:30  bart
-* first fully working revision; this one has nice printing of signatures;
-*
-* Revision 1.3  2001/07/03 13:16:08  bart
-* major rework on read callback function
-*
-* Revision 1.2  2001/06/30 19:10:09  bart
-* implementation has some issues at the moment -- not very stable on large data.
-*
-* Revision 1.1  2001/06/19 23:56:49  bart
-* first cut
+* Revision 1.1.1.1  2001/07/10 00:20:14  bartron
+* initial import
 *
 * 
 *****************************************************************************/

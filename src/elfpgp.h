@@ -1,6 +1,6 @@
 /****************************************************************************
 * 
-* $Id: elfpgp.h,v 1.2 2001/06/27 02:51:05 bart Exp $
+* $Id: elfpgp.h,v 1.1.1.1 2001/07/10 00:20:14 bartron Exp $
 * 
 * Copyright (C) 2001 Bart Trojanowski <bart@jukie.net>
 *
@@ -49,11 +49,8 @@ typedef struct
 /****************************************************************************
 * 
 * $Log: elfpgp.h,v $
-* Revision 1.2  2001/06/27 02:51:05  bart
-* added SHT_PGPTAB and SHT_PGPSIG section types; fixed size of pt_type to be a 32 bit entity;
-*
-* Revision 1.1  2001/06/26 04:01:03  bart
-* added a lot of elf processing... almost complete implementation
+* Revision 1.1.1.1  2001/07/10 00:20:14  bartron
+* initial import
 *
 * 
 *****************************************************************************/
