@@ -1,12 +1,23 @@
 This is an alpha release... please see website for details.
 
-	http://elfpgp.sourceforge.net
 	http://www.jukie.net/~bart/elfpgp
+	http://elfpgp.sourceforge.net
 
 You will need to install libelf development package (or source + headers).
-On debian you can run:
+On Debian you can run:
 
 	apt-get install libelfg0-dev libgpgme-dev
+
+Currently this package has only been tested on Linux.  I don't expect it to 
+be extremely portable at this time.
+
+More to the point, I've built and tested it with the following Debian packages:
+
+	kernel         2.4.20
+	gcc            2.95.4-17
+	libc6-dev      2.3.1-16
+	libgpgme-dev   0.3.15-1
+	libelfg0-dev   0.8.2-1
 
 Bart Trojanowski
 <bart@jukie.net>

@@ -1,3 +1,10 @@
+Fri Apr 25 21:46:32 2003  Bart Trojanowski  <bart@jukie.net>
+
+	* 0.1.2 release
+	* src/*: standardised on a copyright message for many source files,
+		also dropped some of the old-style file headers
+	* configure.in: fail if required libraries/headers are not found
+
 Thu Apr 24 20:40:04 2003  Bart Trojanowski  <bart@jukie.net>
 
 	* 0.1.1 release

@@ -1,21 +1,52 @@
-dnl Process this file with autoconf to produce a configure script.
+# Copyright (C) 2001-2003 Bart Trojanowski <bart@jukie.net>
+#
+# This file is a part of the elfsign utility
+# Process this file with autoconf to produce a configure script.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+#ident "%Z%%M% %I%      %E% Bart Trojanowski <bart@jukie.net>"
 
 AC_INIT(src/main.c)
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(config.h)
 
-AM_INIT_AUTOMAKE(elfpgp, 0.1.1)
+AM_INIT_AUTOMAKE(elfpgp, 0.1.2)
 
 dnl Checks for programs.
 AC_PROG_CC
 
 dnl Checks for libraries.
-AC_CHECK_LIB(elf, elf_version)
-AC_CHECK_LIB(gpgme, gpgme_new)
+AC_CHECK_LIB(elf, elf_version,, [
+	echo "ERROR:  You need libelf to build elfpgp.";
+	AC_MSG_ERROR([Fatal:  libelf not found.])])
+AC_CHECK_LIB(gpgme, gpgme_new,, [
+	echo "ERROR:  You need libgpgme to build elfpgp.";
+	AC_MSG_ERROR([Fatal:  libgpgme not found.])])
 
 dnl Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS(strings.h unistd.h gpgme.h libelf/libelf.h)
+AC_CHECK_HEADERS([errno.h fcntl.h stdio.h stdlib.h string.h sys/stat.h sys/types.h termios.h unistd.h getopt.h],, [
+	echo "ERROR:  You need libc to build elfpgp.";
+	AC_MSG_ERROR([Fatal:  libc headers not found.])])
+AC_CHECK_HEADERS(libelf/libelf.h,, [
+	echo "ERROR:  You need libelf to build elfpgp.";
+	AC_MSG_ERROR([Fatal:  elf headers not found.])])
+AC_CHECK_HEADERS(gpgme.h,, [
+	echo "ERROR:  You need libgpgme to build elfpgp.";
+	AC_MSG_ERROR([Fatal:  gpgme headers not found.])])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
