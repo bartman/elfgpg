@@ -26,9 +26,10 @@
 #include <string.h>
 #include "debug.h"
 
-/* create_data() and create_section() was taken from libelf-examples-0.1.0 
-* written by Michael Riepe <michael@stud.uni-hannover.de>
-*/
+/* 
+ * create_data() and create_section() was taken from libelf-examples-0.1.0 
+ * Copyright (C) 1997 Michael Riepe <michael@stud.uni-hannover.de>
+ */
 
 static Elf_Data* create_data(Elf_Scn *scn, void *buf, size_t size, 
 		Elf_Type type, size_t align) __attribute__ ((unused));

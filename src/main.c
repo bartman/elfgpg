@@ -41,13 +41,15 @@
 #include "options.h"
 #include "sign.h"
 #include "verify.h"
+#include "dump.h"
 
 elfsign_options_t *opts;
 
-static struct option long_options[11] =
+static struct option long_options[12] =
 {
 	{"sign",    0, 0, 's'},
 	{"verify",  0, 0, 'c'},
+	{"dump",    0, 0, 'd'},
 	{"quiet",   0, 0, 'q'},
 	{"verbose", 0, 0, 'v'},
 	{"force",   0, 0, 'f'},
@@ -74,6 +76,7 @@ dump_help( const char * name )
 	printf("\ncommands:\n"
 	" -s, --sign                  append or replace signature\n"
 	" -c, --verify                verify signature\n"
+	" -d, --dump                  list signature info\n"
 	" -h, --help                  what you are reading now\n"
 	" -V, --version               print version info\n"
 	"\noptions:\n"
@@ -121,6 +124,11 @@ process_options( int argc, char *const *argv )
 		case 'c':
 			opts->operation = VERIFY;
 			ES_PRINT(DEBUG,"operation = VERIFY\n");
+			break;
+
+		case 'd':
+			opts->operation = DUMP;
+			ES_PRINT(DEBUG,"operation = DUMP\n");
 			break;
 
 		case 'q':
@@ -222,22 +230,25 @@ test_file( const char *file, int fd, int mode )
 			int good = 0;
 
 			if( st.st_uid == uid || st.st_uid == euid ) {
-				int um = mode << 6; /* user mode required */
-				ES_PRINT(DEBUG,"%s: owner\n",file);
+				/* user mode required */
+				unsigned int um = mode << 6;
+				ES_PRINT(DEBUG,"%s: testing owner\n",file);
 				if( (st.st_mode & um) == um )
 					good++;
 			}
 
 			if( st.st_gid == gid || st.st_gid == egid ) {
-				int gm = mode << 3; /* group mode required */
-				ES_PRINT(DEBUG,"%s: group\n",file);
+				/* group mode required */
+				unsigned int gm = mode << 3;
+				ES_PRINT(DEBUG,"%s: testing group\n",file);
 				if( (st.st_mode & gm) == gm )
 					good++;
 			}
 
 			if( !good ) {
-				int om = mode;      /* other more required */
-				ES_PRINT(DEBUG,"%s: other\n",file);
+				/* other mode required */
+				unsigned int om = mode;
+				ES_PRINT(DEBUG,"%s: testing other\n",file);
 				if( (st.st_mode & om) == om )
 					good++;
 			}
@@ -288,6 +299,12 @@ main( int argc, char **argv )
 		o_mode  = O_RDONLY;
 		t_mode  = S_IROTH;
 		proc_fn = do_elfverify;
+		break;
+
+	case DUMP:
+		o_mode  = O_RDONLY;
+		t_mode  = S_IROTH;
+		proc_fn = do_elfdump;
 		break;
 
 	default:

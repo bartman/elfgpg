@@ -32,6 +32,7 @@
 #include "verify.h"
 #include "elfpgp.h"
 #include "elfhelp.h"
+#include "elfstrings.h"
 
 typedef struct verify_session_s 
 {
@@ -174,7 +175,7 @@ print_verbose_sig_stat ( verify_session_t *s, GpgmeSigStat status )
 	int idx;
 	GpgmeKey key;
 
-	ES_PRINT(DEBUG, "process_elf: dumping status...\n");
+	ES_PRINT(DEBUG, "print_verbose_sig_stat: dumping status...\n");
 
 	for(idx=0;(ss=gpgme_get_sig_status(s->ctx, idx, &status, &created));
 			idx++) {
@@ -199,6 +200,9 @@ read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
 	int eof;	/* 1 if there is no more data to read */
 	void *src_ptr, *dst_ptr;
 	size_t src_len, dst_len;
+	const char *tname, *sname;
+	char type_number[16];
+	int ndx;
 
 	ES_PRINT(DEBUG, "%s(%p, %p, %d, %p)\n",
 			__PRETTY_FUNCTION__, opaque, buff, blen, bused );
@@ -239,8 +243,9 @@ more:
 			s->data = &s->fake_data;
 			s->data->d_buf = (void*)s->ehdr;
 			s->data->d_size = s->pgp.pt_size;
-			ES_PRINT(DEBUG,"READ: EHDR %8d bytes\n", 
-					s->data->d_size);
+		
+			ES_PRINT(INFO,"  %-7s  %-13s  %5d  %s\n", 
+					"EHDR", "", s->pgp.pt_size, "");
 			break;
 
 		case ELF_PT_PHDR:
@@ -248,20 +253,35 @@ more:
 			s->data = &s->fake_data;
 			s->data->d_buf = (void*)s->phdr;
 			s->data->d_size = s->pgp.pt_size;
-			ES_PRINT(DEBUG,"READ: PHDR %8d bytes\n", 
-					s->data->d_size);
+
+			ES_PRINT(INFO,"  %-7s  %-13s  %5d  %s\n", 
+					"PHDR", "", s->pgp.pt_size, "");
 			break;
 
 		case ELF_PT_SCN:
+			/* this is the section index */
+			ndx = s->pgp.pt_shndx;
+
 			/* we know the section number, get the section & header */
-			s->scn = elf_getscn(s->elf, s->pgp.pt_shndx);
+			s->scn = elf_getscn(s->elf, ndx);
 			if( !(s->shdr = elf32_getshdr(s->scn)) ) { 
 				ES_PRINT(ERROR,"%s: shndx=%d: %s\n", s->file, 
-						s->pgp.pt_shndx,
-						elf_errmsg(-1));
+						ndx, elf_errmsg(-1));
 				eof = s->read_cb_eof = 1;
 				goto bail;
 			}
+
+			/* make sure we have a type for this section */
+			tname = elf_sht_string (s->shdr->sh_type);
+			if (!tname) {
+				tname = type_number;
+				sprintf (type_number, "0x%08x", 
+						s->shdr->sh_type);
+			}
+
+			/* get the name of the elf section we are looking at */
+			sname = elf_strptr(s->elf, s->ehdr->e_shstrndx, 
+					s->shdr->sh_name);
 
 			/* now get the data for that section */
 			if( !(s->data = elf_getdata(s->scn, NULL)) ) {
@@ -270,8 +290,9 @@ more:
 				eof = s->read_cb_eof = 1;
 				goto bail;
 			}
-			ES_PRINT(DEBUG,"READ: %d %8d bytes\n", s->pgp.pt_shndx,
-					s->data->d_size);
+
+			ES_PRINT(INFO,"  SCN %-3d  %-13s  %5d  %s\n", 
+					ndx, tname, s->data->d_size, sname);
 			break;
 
 		default:
@@ -293,7 +314,13 @@ more:
 
 	/* test to see if all the current data block can be submitted */
 	if( src_len <= dst_len ) {
-		memcpy( dst_ptr, src_ptr, src_len );
+		if (s->data->d_buf) {
+			/* if we have a src pointer then copy */
+			memcpy ( dst_ptr, src_ptr, src_len );
+		} else {
+			/* otherwise we clear -- probably a .bss section */
+			memset ( dst_ptr, 0, src_len );
+		}
 		*bused += src_len;
 		/* move buffer pointer/size to after new addition */
 		dst_ptr += src_len;
@@ -306,7 +333,13 @@ more:
 			goto more;
 
 	} else {
-		memcpy( dst_ptr, src_ptr, dst_len );
+		if (s->data->d_buf) {
+			/* if we have a src pointer then copy */
+			memcpy ( dst_ptr, src_ptr, dst_len );
+		} else {
+			/* otherwise we clear -- probably a .bss section */
+			memset ( dst_ptr, 0, dst_len );
+		}
 		*bused += dst_len;
 		/* prep for next call */
 		s->scn_offset += dst_len;
@@ -407,7 +440,9 @@ process_elf( verify_session_t *s )
 	s->tab_index = 0;
 	s->scn_offset = 0;
 
-	ES_PRINT(DEBUG, "process_elf: creating data gpgme data object\n");
+	ES_PRINT(INFO,"%s: validating .pgptab entires...\n", s->file);
+	ES_PRINT(INFO,"  %-7s  %-13s  %5s  %s\n", 
+			"entry", "type", "size", "name");
 
 	err = gpgme_data_new_with_read_cb ( &data, read_elf_cb, s );
 	if( err ) {
