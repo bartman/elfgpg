@@ -1,3 +1,8 @@
+Sat May 24 11:41:41 2003  Bart Trojanowski  <bart@jukie.net>
+
+	* 0.1.5 release
+	* src/sign.c: fixed bug with required double signing
+
 Fri May 16 18:52:25 2003  Bart Trojanowski  <bart@jukie.net>
 
 	* 0.1.4 release

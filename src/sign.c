@@ -45,7 +45,7 @@ typedef struct sign_session_s
 	/* file being processed */
 	const char *file;
 	int fd;
-	GpgmeCtx ctx;
+	GpgmeCtx gpgme_ctx;
 
 	void *pgptab_head; /* allocated buffer start */
 	void *pgptab_tail; /* points to next byte to be used */
@@ -69,12 +69,14 @@ typedef struct sign_session_s
 	Elf_Data *data;
 	Elf_Scn *scn;
 
+	/* had to generate the new sections */
+	int new_sections;
+
 	/* the signature buffer */
 	size_t slen;
 	char sig[4096];	
 }
 sign_session_t;
-
 
 static int 
 linelen (const char *s)
@@ -315,9 +317,8 @@ more:
 			/* we know the section number, get the section & header */
 			s->scn = elf_getscn(s->elf, ndx);
 			if( !(s->shdr = elf32_getshdr(s->scn)) ) { 
-				ES_PRINT(ERROR,"%s: shndx=%d: %s\n", 
-						s->file, ndx,
-						elf_errmsg(-1));
+				ES_PRINT(ERROR,"%s: shndx=%d: %s\n", s->file, 
+						ndx, elf_errmsg(-1));
 				eof = s->read_cb_eof = 1;
 				goto bail;
 			}
@@ -357,7 +358,6 @@ more:
 
 	src_ptr = s->data->d_buf + s->scn_offset;
 	src_len = s->data->d_size - s->scn_offset;
-
 	if( !src_len ) 
 		goto bail;
 
@@ -458,6 +458,9 @@ prepare_elfpgp_sections( sign_session_t *s )
 {
 	int err = 1;
 
+	/* assume we don't need a second pass */
+	s->new_sections = 0;
+
 	ES_PRINT(DEBUG, "%s: locating the .pgptab section\n", 
 			__PRETTY_FUNCTION__);
 
@@ -487,6 +490,9 @@ prepare_elfpgp_sections( sign_session_t *s )
 					s->file, elf_errmsg(-1));
 			goto bail;
 		}
+
+		/* creating sections means we need a second pass */
+		s->new_sections++;
 	}
 
 	/* update the object to include this table */
@@ -539,11 +545,14 @@ prepare_elfpgp_sections( sign_session_t *s )
 					elf_errmsg(-1));
 			goto bail;
 		}
+
+		/* creating sections means we need a second pass */
+		s->new_sections++;
 	}
 
 	/* update the elf file to include this structure */
 	s->pgpsig_data->d_align = 1;
-	s->pgpsig_data->d_size = 65;
+	s->pgpsig_data->d_size = 65; /* is this large enough for any sig? */
 	s->pgpsig_data->d_type = ELF_T_BYTE;
 	s->pgpsig_data->d_buf = s->sig;
 
@@ -708,7 +717,7 @@ generate_pgpsig( sign_session_t *s )
 		goto bail;
 	}
 
-	err = gpgme_op_sign (s->ctx, in, out, GPGME_SIG_MODE_DETACH);
+	err = gpgme_op_sign (s->gpgme_ctx, in, out, GPGME_SIG_MODE_DETACH);
 	if( err ) {
 		ES_PRINT(ERROR, "gpgme_op_sign: %s\n", gpgme_strerror(err));
 		goto bail;
@@ -727,7 +736,7 @@ generate_pgpsig( sign_session_t *s )
 			goto bail;
 		}
 	} else {
-		ES_PRINT(NORM, "%s: sig %d bytes\n", s->file, s->slen);
+		ES_PRINT(INFO, "%s: sig %d bytes\n", s->file, s->slen);
 	}
 
 	s->pgpsig_data->d_align = 1;
@@ -771,7 +780,9 @@ int
 do_elfsign( const char *file, int fd )
 {
 	int ret;
+	int loop = 0;
 	sign_session_t session;
+	GpgmeCtx gpgme_ctx;
 
 	ES_PRINT(DEBUG,"elfsign( '%s', %d )...\n"
 			"\tverbose = %d\n"
@@ -787,25 +798,82 @@ do_elfsign( const char *file, int fd )
 	session.file = file;
 	session.fd = fd;
 
-	ret = configure_gpg( &session.ctx );
+	ret = configure_gpg( &gpgme_ctx );
+	if (ret) {
+		ES_PRINT (ERROR, "%s: failed to init libgpgme\n", file);
+		goto bail;
+	}
 
-	if( !ret )
-		ret = open_elf_file( &session );
+	/* store the gpgme contxt in the session */
+	session.gpgme_ctx = gpgme_ctx;
 
-	if( !ret )
-		ret = prepare_elfpgp_sections( &session );
+again:
+	ret = open_elf_file( &session );
+	if (ret) {
+		ES_PRINT (ERROR, "%s: failed to open file\n", file);
+		goto bail;
+	}
 
-	if( !ret )
-		ret = generate_pgptab( &session );
+	ret = prepare_elfpgp_sections( &session );
+	if (ret) {
+		ES_PRINT (ERROR, "%s: failed to prepare sections\n", file);
+		goto bail;
+	}
 
-	if( !ret )
-		ret = generate_pgpsig( &session );
+	ret = generate_pgptab( &session );
+	if (ret) {
+		ES_PRINT (ERROR, "%s: failed to generate .pgptab\n", file);
+		goto bail;
+	}
 
-	if( !ret )
+	ret = generate_pgpsig( &session );
+	if (ret) {
+		ES_PRINT (ERROR, "%s: failed to generate .pgpsig\n", file);
+		goto bail;
+	}
+
+	if( !ret && session.new_sections ) {
+
 		ret = commit_elf_to_file( &session );
+		if( ret ) {
+			ES_PRINT (ERROR, "%s: failed to commit new sections\n", 
+					file);
+			goto bail;
+		}
 
+		/* finalize the elf file */
+		elf_end(session.elf);
+
+		/* reset the structure and put back the values we need */
+		memset(&session, 0, sizeof(sign_session_t));
+		session.file = file;
+		session.fd = fd;
+		session.gpgme_ctx = gpgme_ctx;
+
+		if (++loop < 2) {
+			ES_PRINT(INFO, "%s: created pgp sections; "
+					"string pass %d\n", file, loop);
+
+			goto again;
+		}
+
+		ES_PRINT(ERROR, "%s: internal error; endless loop detected\n",
+				file);
+		ret = -EFAULT;
+	}
+
+	ret = commit_elf_to_file( &session );
+	if( ret ) {
+		ES_PRINT (ERROR, "%s: failed to commit elf file\n", file);
+		goto bail;
+	}
+
+	/* success */
+	ES_PRINT(NORM, "%s: signed\n", file);
+
+bail:
 	elf_end(session.elf);
-	gpgme_release( session.ctx );
+	gpgme_release( gpgme_ctx );
 
 	if( session.pgptab_head )
 		free( session.pgptab_head );

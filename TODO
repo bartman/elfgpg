@@ -1,4 +1,7 @@
-prepare_elfpgp_sections need cleanup of something fails.
-elfpgp --remove is needed
-write a man page
-write up the file format (extra elf sections)
+- prepare_elfpgp_sections need cleanup of something fails.
+- elfpgp --remove is needed
+- write a man page
+- write up the file format (extra elf sections)
+- should sign the .pgptab section as well
+- should make sure on --verify that all 'important' sections are actually signed
+- remove duplication from sign.c, verify.c and dump.c
