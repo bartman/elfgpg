@@ -36,9 +36,11 @@ ACLOCAL                 = aclocal -I $(ac_aux_dir)
 
 
 dist-hook:
-	(cd $(distdir) && mkdir $(ac_aux_dir))
+	(cd $(distdir) && mkdir -p $(ac_aux_dir))
 	for file in $(AUX_DIST) $(AUX_DIST_EXTRA); do \
 	  cp $$file $(distdir)/$$file; \
 	done
 
-
+# don't propagate autoconf generated files to source distribution.
+distclean-local:
+	-rm -f config.guess config.sub config.log config.h

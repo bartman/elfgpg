@@ -28,6 +28,8 @@
 #include <termios.h>
 #include <stdlib.h>
 
+#include "ep_session.h"
+
 #include "options.h"
 #include "verify.h"
 #include "elfpgp.h"
@@ -36,26 +38,15 @@
 
 typedef struct verify_session_s 
 {
-	const char *file;
-	int fd;
-	GpgmeCtx ctx;
+	elfpgp_session_t	*elfpgp_session;
+
+	/* context for gpgme */
+	GpgmeCtx 		gpgme_ctx;
 
 	/* how far are we in the read */
 	u_int32_t tab_index;
 	u_int32_t scn_offset;
 	int read_cb_eof;
-
-	/* elf processing variables */
-	Elf *elf;
-
-	Elf32_Ehdr *ehdr;
-	Elf32_Phdr *phdr;
-
-	/* the two section worth preloading */
-	Elf32_Shdr *pgptab_hdr, *pgpsig_hdr;
-	Elf_Scn *pgptab_scn, *pgpsig_scn;
-	Elf_Data *pgptab_data, *pgpsig_data;
-	Elf_Data fake_data;
 
 	/* entry in the .pgptab */
 	Elf32_Pgp pgp; 
@@ -64,6 +55,9 @@ typedef struct verify_session_s
 	Elf32_Shdr *shdr;
 	Elf_Data *data;
 	Elf_Scn *scn;
+
+	/* fake data for data pointer */
+	Elf_Data fake_data;
 }
 verify_session_t;
 
@@ -113,6 +107,12 @@ verify_status_string (GpgmeSigStat status)
 	case GPGME_SIG_STAT_DIFF:
 		s = ">1 sig";
 		break;
+	case GPGME_SIG_STAT_GOOD_EXP:
+		s = "Good/Exp";
+		break;
+	case GPGME_SIG_STAT_GOOD_EXPKEY:
+		s = "Good/ExpKey";
+		break;
 	default:
 		ES_PRINT(ERROR, "%s: unhandled status of %d\n", 
 				__PRETTY_FUNCTION__, status);
@@ -125,11 +125,12 @@ verify_status_string (GpgmeSigStat status)
 static void
 print_short_sig_stat ( verify_session_t *s, GpgmeSigStat stat )
 {
-	const char *id, *alg, *caps, *name, *email, *note;
+	const char *id=NULL, *alg=NULL, *caps=NULL, *name=NULL, 
+			*email=NULL, *note=NULL;
 	GpgmeKey key;
 	int rc;
 
-	if( !(gpgme_get_sig_key( s->ctx, 0, &key)) ) {
+	if( !(gpgme_get_sig_key( s->gpgme_ctx, 0, &key)) ) {
 		id    = gpgme_key_get_string_attr( key, GPGME_ATTR_KEYID, 
 				NULL, 0 );
 		alg   = gpgme_key_get_string_attr( key, GPGME_ATTR_ALGO, 
@@ -145,7 +146,7 @@ print_short_sig_stat ( verify_session_t *s, GpgmeSigStat stat )
 	}
 
 	rc = ES_PRINT(INFO,"%-*s %-8s %s %s (%s) <%s>\n",
-			opts->file_name_max, s->file, 
+			opts->file_name_max, s->elfpgp_session->file, 
 			verify_status_string(stat),
 			id, name, note, email);
 
@@ -160,7 +161,7 @@ print_short_sig_stat ( verify_session_t *s, GpgmeSigStat stat )
 			val = id;
 		}
 		ES_PRINT(NORM, fmt,
-				opts->file_name_max, s->file, 
+				opts->file_name_max, s->elfpgp_session->file, 
 				verify_status_string(stat),
 				val);
 	}
@@ -177,13 +178,13 @@ print_verbose_sig_stat ( verify_session_t *s, GpgmeSigStat status )
 
 	ES_PRINT(DEBUG, "print_verbose_sig_stat: dumping status...\n");
 
-	for(idx=0;(ss=gpgme_get_sig_status(s->ctx, idx, &status, &created));
+	for(idx=0;(ss=gpgme_get_sig_status(s->gpgme_ctx, idx, &status, &created));
 			idx++) {
 		ES_PRINT(INFO, "sig %d: created: %lu status: %s\n", 
 				idx, (unsigned long)created, 
 				verify_status_string(status) );
 		ES_PRINT(INFO, "sig %d: fpr/keyid=`%s'\n", idx, ss );
-		if ( !gpgme_get_sig_key (s->ctx, idx, &key) ) {
+		if ( !gpgme_get_sig_key (s->gpgme_ctx, idx, &key) ) {
 			char *p = gpgme_key_get_as_xml ( key );
 			ES_PRINT(INFO,"sig %d: key object:\n%s\n", idx, p );
 			free (p);
@@ -197,6 +198,7 @@ static int
 read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
 {
 	verify_session_t *s = (void*)opaque;
+	elfpgp_session_t *es = s->elfpgp_session;
 	int eof;	/* 1 if there is no more data to read */
 	void *src_ptr, *dst_ptr;
 	size_t src_len, dst_len;
@@ -223,14 +225,14 @@ more:
 		ES_PRINT(DEBUG, "read_elf_cb: !offset: new section %d\n", 
 				s->tab_index);
 
-		if( (pgp_offset+sizeof(Elf32_Pgp)) > s->pgptab_data->d_size ) {
+		if( (pgp_offset+sizeof(Elf32_Pgp)) > es->pgptab_data->d_size ) {
 			ES_PRINT(DEBUG,"%s: got to the end of .pgptab\n", 
-					s->file);
+					es->file);
 			s->read_cb_eof = 1;
 			goto bail;
 
 		}
-		memcpy( &s->pgp, s->pgptab_data->d_buf + pgp_offset, 
+		memcpy( &s->pgp, es->pgptab_data->d_buf + pgp_offset, 
 				sizeof(Elf32_Pgp) );
 
 		ES_PRINT(DEBUG, "read_elf_cb: pgptab[%d] = { %d, %d, %d }\n",
@@ -241,7 +243,7 @@ more:
 		case ELF_PT_EHDR:
 			/* we got an elf header */
 			s->data = &s->fake_data;
-			s->data->d_buf = (void*)s->ehdr;
+			s->data->d_buf = (void*)es->ehdr;
 			s->data->d_size = s->pgp.pt_size;
 		
 			ES_PRINT(INFO,"  %-7s  %-13s  %5d  %s\n", 
@@ -251,7 +253,7 @@ more:
 		case ELF_PT_PHDR:
 			/* get got a program header */
 			s->data = &s->fake_data;
-			s->data->d_buf = (void*)s->phdr;
+			s->data->d_buf = (void*)es->phdr;
 			s->data->d_size = s->pgp.pt_size;
 
 			ES_PRINT(INFO,"  %-7s  %-13s  %5d  %s\n", 
@@ -263,9 +265,9 @@ more:
 			ndx = s->pgp.pt_shndx;
 
 			/* we know the section number, get the section & header */
-			s->scn = elf_getscn(s->elf, ndx);
+			s->scn = elf_getscn(es->elf, ndx);
 			if( !(s->shdr = elf32_getshdr(s->scn)) ) { 
-				ES_PRINT(ERROR,"%s: shndx=%d: %s\n", s->file, 
+				ES_PRINT(ERROR,"%s: shndx=%d: %s\n", es->file, 
 						ndx, elf_errmsg(-1));
 				eof = s->read_cb_eof = 1;
 				goto bail;
@@ -280,12 +282,12 @@ more:
 			}
 
 			/* get the name of the elf section we are looking at */
-			sname = elf_strptr(s->elf, s->ehdr->e_shstrndx, 
+			sname = elf_strptr(es->elf, es->ehdr->e_shstrndx, 
 					s->shdr->sh_name);
 
 			/* now get the data for that section */
 			if( !(s->data = elf_getdata(s->scn, NULL)) ) {
-				ES_PRINT(ERROR,"%s: get data %s\n", s->file, 
+				ES_PRINT(ERROR,"%s: get data %s\n", es->file, 
 						elf_errmsg(-1));
 				eof = s->read_cb_eof = 1;
 				goto bail;
@@ -298,7 +300,7 @@ more:
 		default:
 			ES_PRINT(ERROR,"%s: invalid .pgptab entry type "
 					"at index %d\n",
-					s->file, s->pgp.pt_shndx);
+					es->file, s->pgp.pt_shndx);
 			eof = s->read_cb_eof = 1;
 			goto bail;
 		}
@@ -356,55 +358,56 @@ static int
 init_process_elf( verify_session_t *s )
 {
 	int err;
+	elfpgp_session_t *es = s->elfpgp_session;
 
-	s->elf = elf_begin( s->fd, ELF_C_READ, NULL );
-	switch( elf_kind(s->elf) ) {
+	es->elf = elf_begin( es->fd, ELF_C_READ, NULL );
+	switch( elf_kind(es->elf) ) {
 	case ELF_K_ELF:
-		ES_PRINT(DEBUG, "%s: ELF file format detected\n", s->file);
+		ES_PRINT(DEBUG, "%s: ELF file format detected\n", es->file);
 
-		s->phdr = NULL;
+		es->phdr = NULL;
 		err = 1;
 
 		/* get Elf Program Headers then the scn/shdr/data for the tab/sig scns */
-		if( !(s->ehdr = elf32_getehdr(s->elf)) ) {
-			ES_PRINT(ERROR, "%s: %s\n", s->file, elf_errmsg(-1));
+		if( !(es->ehdr = elf32_getehdr(es->elf)) ) {
+			ES_PRINT(ERROR, "%s: %s\n", es->file, elf_errmsg(-1));
 
-		} else if ( s->ehdr->e_phnum 
-				&& !(s->phdr = elf32_getphdr(s->elf)) ) {
-			ES_PRINT(ERROR, "%s: %s\n", s->file, elf_errmsg(-1));
+		} else if ( es->ehdr->e_phnum 
+				&& !(es->phdr = elf32_getphdr(es->elf)) ) {
+			ES_PRINT(ERROR, "%s: %s\n", es->file, elf_errmsg(-1));
 
-		} else if ( !(s->pgptab_hdr = elf32_getshdr( s->pgptab_scn 
-					= elf_findscn(s->elf, ".pgptab"))) ) {
+		} else if ( !(es->pgptab_hdr = elf32_getshdr( es->pgptab_scn 
+					= elf_findscn(es->elf, ".pgptab"))) ) {
 			if ( elf_errno() ) {
 				ES_PRINT(ERROR, "%s: find .pgptab: %s\n", 
-						s->file, elf_errmsg(-1));
+						es->file, elf_errmsg(-1));
 			} else {
 				ES_PRINT(NORM, "%-*s %-8s\n", 
-						opts->file_name_max, s->file,
+						opts->file_name_max, es->file,
 						verify_status_string (
 							GPGME_SIG_STAT_NOSIG));
 			}
 
-		} else if ( !(s->pgptab_data = elf_getdata(s->pgptab_scn, 
+		} else if ( !(es->pgptab_data = elf_getdata(es->pgptab_scn, 
 						NULL)) ) {
-			ES_PRINT(ERROR, "%s: data .pgptab: %s\n", s->file, 
+			ES_PRINT(ERROR, "%s: data .pgptab: %s\n", es->file, 
 					elf_errmsg(-1));
 
-		} else if ( !(s->pgpsig_hdr = elf32_getshdr( s->pgpsig_scn 
-					= elf_findscn(s->elf, ".pgpsig"))) ) {
+		} else if ( !(es->pgpsig_hdr = elf32_getshdr( es->pgpsig_scn 
+					= elf_findscn(es->elf, ".pgpsig"))) ) {
 			if ( elf_errno() ) {
 				ES_PRINT(ERROR, "%s: find .pgpsig: %s\n", 
-						s->file, elf_errmsg(-1));
+						es->file, elf_errmsg(-1));
 			} else {
 				ES_PRINT(NORM, "%-*s %-8s\n", 
-						opts->file_name_max, s->file,
+						opts->file_name_max, es->file,
 						verify_status_string (
 							GPGME_SIG_STAT_NOSIG));
 			}
 
-		} else if ( !(s->pgpsig_data = elf_getdata(s->pgpsig_scn, 
+		} else if ( !(es->pgpsig_data = elf_getdata(es->pgpsig_scn, 
 						NULL)) ) {
-			ES_PRINT(ERROR, "%s: data .pgpsig: %s\n", s->file, 
+			ES_PRINT(ERROR, "%s: data .pgpsig: %s\n", es->file, 
 					elf_errmsg(-1));
 
 		} else {
@@ -415,12 +418,12 @@ init_process_elf( verify_session_t *s )
 	case ELF_K_AR:
 		err = 1;
 		ES_PRINT(ERROR, "%s: elf_kind of ELF_K_AR is not supported\n", 
-				s->file);
+				es->file);
 		break;
 
 	default:
 		err = 1;
-		ES_PRINT(ERROR, "%s: file format not recognized", s->file);
+		ES_PRINT(ERROR, "%s: file format not recognized", es->file);
 		break;
 	}
 
@@ -435,12 +438,13 @@ process_elf( verify_session_t *s )
 	GpgmeError err;
 	GpgmeData sig, data;
 	GpgmeSigStat status;
+	elfpgp_session_t *es = s->elfpgp_session;
 
 	/* start processing the .pgptab at the first entry */
 	s->tab_index = 0;
 	s->scn_offset = 0;
 
-	ES_PRINT(INFO,"%s: validating .pgptab entires...\n", s->file);
+	ES_PRINT(INFO,"%s: validating .pgptab entires...\n", es->file);
 	ES_PRINT(INFO,"  %-7s  %-13s  %5s  %s\n", 
 			"entry", "type", "size", "name");
 
@@ -454,9 +458,9 @@ process_elf( verify_session_t *s )
 	ES_PRINT(DEBUG, "process_elf: creating sig gpgme data object\n");
 
 	ES_PRINT(DEBUG, "process_elf: sig is of size %d\n",
-			s->pgpsig_data->d_size);
-	err = gpgme_data_new_from_mem( &sig, s->pgpsig_data->d_buf,
-			s->pgpsig_data->d_size, 0 );
+			es->pgpsig_data->d_size);
+	err = gpgme_data_new_from_mem( &sig, es->pgpsig_data->d_buf,
+			es->pgpsig_data->d_size, 0 );
 	if( err ) {
 		ES_PRINT(ERROR, "gpgme_data_new_from_mem: %s\n", 
 				gpgme_strerror(err));
@@ -465,7 +469,7 @@ process_elf( verify_session_t *s )
 
 	ES_PRINT(DEBUG, "process_elf: calling gpgme_op_verify\n");
 
-	err = gpgme_op_verify (s->ctx, sig, data, &status);
+	err = gpgme_op_verify (s->gpgme_ctx, sig, data, &status);
 	if( err ) {
 		ES_PRINT(ERROR, "gpgme_op_verify: %s\n", 
 				gpgme_strerror(err));
@@ -494,6 +498,7 @@ int
 do_elfverify( const char *file, int fd )
 {
 	int ret;
+	elfpgp_session_t elfpgp_session;
 	verify_session_t session;
 
 	ES_PRINT(DEBUG,"elfverify( '%s', %d )...\n"
@@ -506,11 +511,14 @@ do_elfverify( const char *file, int fd )
 			opts->verbose, opts->force, opts->keyname, 
 			opts->keyring, opts->algname );
 
-	memset(&session, 0, sizeof(verify_session_t));
-	session.file = file;
-	session.fd = fd;
+	memset(&elfpgp_session, 0, sizeof(elfpgp_session_t));
+	elfpgp_session.file = file;
+	elfpgp_session.fd = fd;
 
-	ret = configure_gpg( &session.ctx );
+	memset(&session, 0, sizeof(verify_session_t));
+	session.elfpgp_session = &elfpgp_session;
+
+	ret = configure_gpg( &session.gpgme_ctx );
 
 	if( ! ret )
 		ret = init_process_elf( &session );
@@ -518,8 +526,8 @@ do_elfverify( const char *file, int fd )
 	if( ! ret )
 		ret = process_elf( &session );
 
-	elf_end(session.elf);
-	gpgme_release( session.ctx );
+	elf_end(elfpgp_session.elf);
+	gpgme_release( session.gpgme_ctx );
 
 	return ret; 
 }

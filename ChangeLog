@@ -1,39 +1,40 @@
-Sat May 24 11:41:41 2003  Bart Trojanowski  <bart@jukie.net>
+elfpgp (0.1.6) unstable; urgency=low
 
-	* 0.1.5 release
-	* src/sign.c: fixed bug with required double signing
+  * debian/rules: handling of DEB_BUILD_OPTIONS=nostrip fixed.
+  * Makefile.am: removed stale autoconf files from source dist.
+  * postinst.woody, prerm.woody: removed.
+  * ChangeLog: removed, it duplicated this file.
 
-Fri May 16 18:52:25 2003  Bart Trojanowski  <bart@jukie.net>
+ -- Bart Trojanowski <bart@jukie.net>  Sun, 19 Oct 2003 12:27:11 -0400
 
-	* 0.1.4 release
-	* src/dump.c: added support for --dump command that is quite useful
-		in debugging problems.
-	* src/sign.c: fixed a bug with signature generation; more sections
-		are now signed.  This introduced another bug (see BUGS).
-	* src/verify.c: prettier output with using -v.
+elfpgp (0.1.5-2) unstable; urgency=low
 
-Tue Apr 29 20:12:51 2003  Bart Trojanowski  <bart@jukie.net>
+  * fixing lintian warnings. 
+  * upgraded to automake 1.7.
 
-	* 0.1.3 release
-	* src/*: cleaned up the code (via indent + manual changes),
-		added more debug info for --verbose traces
-	* BUGS: added a bugs file; intended to list all know issues
+ -- Bart Trojanowski <bart@jukie.net>  Tue, 14 Oct 2003 22:01:17 -0400
 
-Fri Apr 25 21:46:32 2003  Bart Trojanowski  <bart@jukie.net>
+elfpgp (0.1.5-1) unstable; urgency=low
 
-	* 0.1.2 release
-	* src/*: standardized on a copyright message for many source files,
-		also dropped some of the old-style file headers
-	* configure.in: fail if required libraries/headers are not found
+  * Minor bug fixes.
 
-Thu Apr 24 20:40:04 2003  Bart Trojanowski  <bart@jukie.net>
+ -- Bart Trojanowski <bart@jukie.net>  Tue, 24 May 2003 12:00:00 -0400
 
-	* 0.1.1 release
-	* configure.in: now requires the presence of libgpgme and libelf
-	* README: updated with library dependencies
-	* src/*: cleaned up a lot of build warning messages,
-		updated the copyright message for 2003,
-		cleanup of output from the program
-	* src/Makefile.am: using unoptimized/debug CFLAGS settings
+elfpgp (0.1.4-1) unstable; urgency=low
 
+  * Minor bug fixes.
+
+ -- Bart Trojanowski <bart@jukie.net>  Tue, 16 May 2003 19:00:00 -0400
+
+elfpgp (0.1.3-1) unstable; urgency=low
+
+  * Minor fixes.
+
+ -- Bart Trojanowski <bart@jukie.net>  Tue, 29 Apr 2003 22:07:49 -0400
+
+elfpgp (0.1.2-1) unstable; urgency=low
+
+  * Initial Debian Release.
+
+ -- Bart Trojanowski <bart@jukie.net>  Sun, 27 Apr 2003 18:54:11 -0400
 

@@ -18,7 +18,8 @@
 
 #ident "%Z%%M% %I%      %E% Bart Trojanowski <bart@jukie.net>"
 
-INCLUDES		=  -I$(top_builddir) -I$(top_srcdir) \
+INCLUDES		=  -I$(top_builddir)/src -I$(top_srcdir)/src \
+			-I$(top_builddir)/lib -I$(top_srcdir)/lib \
 			-I /usr/include/libelf
 
 LIBS			= -lelf -lgpgme
@@ -29,6 +30,6 @@ EXTRA_elfpgp_SOURCES	= options.h sign.h verify.h dump.h \
 				debug.h elfhelp.h elfpgp.h \
 				elfstrings.h
 
-#CFLAGS		= -O2 -Wall -Werror
-CFLAGS		= -O0 -ggdb -Wall -Werror
+AM_CFLAGS		= -O2 -Wall -Werror
+#AM_CFLAGS		= -O0 -ggdb -Wall -Werror
 

@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#ident "@(#)elfstrings.c 1.1      03/05/16 Bart Trojanowski <bart@jukie.net>"
+#ident "%Z%%M% %I%      %E% Bart Trojanowski <bart@jukie.net>"
 
 #include <libelf.h>
 #include "debug.h"
