@@ -256,7 +256,7 @@ read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
 	char type_number[16];
 	int ndx;
 
-	ES_PRINT(DEBUG, "%s(%p, %p, %d, %p)\n",
+	ES_PRINT(DEBUG, "%s(%p, %p, %"PRIuMAX", %p)\n",
 			__PRETTY_FUNCTION__, opaque, buff, blen, bused );
 
 	dst_ptr = buff;
@@ -343,7 +343,7 @@ more:
 				goto bail;
 			}
 
-			ES_PRINT(INFO,"  SCN %-3d  %-13s  %5d  %s\n", 
+			ES_PRINT(INFO,"  SCN %-3d  %-13s  %5"PRIuMAX"  %s\n", 
 					ndx, tname, s->data->d_size, sname);
 			break;
 
@@ -361,7 +361,7 @@ more:
 	if( !src_len ) 
 		goto bail;
 
-	ES_PRINT(DEBUG,"read_elf_cb: have data @ %p of len %d bytes\n",
+	ES_PRINT(DEBUG,"read_elf_cb: have data @ %p of len %"PRIuMAX" bytes\n",
 			src_ptr, src_len);
 
 	/* test to see if all the current data block can be submitted */
@@ -398,7 +398,7 @@ more:
 	}
 
 bail:
-	ES_PRINT(DEBUG,"read_elf_cb: returns %d, bytes used set to %d\n",
+	ES_PRINT(DEBUG,"read_elf_cb: returns %d, bytes used set to %"PRIuMAX"\n",
 			eof, *bused);
 	return eof;
 }
@@ -502,9 +502,9 @@ prepare_elfpgp_sections( sign_session_t *s )
 	s->pgptab_data->d_buf = s->pgptab_head;
 
 	ES_PRINT(DEBUG, "%s: elf_update .pgptab...\n", s->file);
-	ES_PRINT(DEBUG, "%s: ->d_align = %d\n", s->file, 
+	ES_PRINT(DEBUG, "%s: ->d_align = %"PRIuMAX"\n", s->file, 
 			s->pgptab_data->d_align);
-	ES_PRINT(DEBUG, "%s: ->d_size = %d\n", s->file, 
+	ES_PRINT(DEBUG, "%s: ->d_size = %"PRIuMAX"\n", s->file, 
 			s->pgptab_data->d_size);
 	ES_PRINT(DEBUG, "%s: ->d_type = %d\n", s->file, 
 			s->pgptab_data->d_type);
@@ -557,9 +557,9 @@ prepare_elfpgp_sections( sign_session_t *s )
 	s->pgpsig_data->d_buf = s->sig;
 
 	ES_PRINT(DEBUG, "%s: elf_update .pgpsig...\n", s->file);
-	ES_PRINT(DEBUG, "%s: ->d_align = %d\n", s->file, 
+	ES_PRINT(DEBUG, "%s: ->d_align = %"PRIuMAX"\n", s->file, 
 			s->pgptab_data->d_align);
-	ES_PRINT(DEBUG, "%s: ->d_size = %d\n", s->file, 
+	ES_PRINT(DEBUG, "%s: ->d_size = %"PRIuMAX"\n", s->file, 
 			s->pgptab_data->d_size);
 	ES_PRINT(DEBUG, "%s: ->d_type = %d\n", s->file, 
 			s->pgptab_data->d_type);
@@ -658,7 +658,7 @@ generate_pgptab( sign_session_t *s )
 			continue;
 		}
 
-		ES_PRINT(INFO,"+ SCN %-3d  %-13s  %5d  %s\n", 
+		ES_PRINT(INFO,"+ SCN %-3d  %-13s  %5"PRIuMAX"  %s\n", 
 				ndx, tname, s->data->d_size, sname);
 
 		/* compose and append the pgptab entry */
@@ -736,7 +736,7 @@ generate_pgpsig( sign_session_t *s )
 			goto bail;
 		}
 	} else {
-		ES_PRINT(INFO, "%s: sig %d bytes\n", s->file, s->slen);
+		ES_PRINT(INFO, "%s: sig %"PRIuMAX" bytes\n", s->file, s->slen);
 	}
 
 	s->pgpsig_data->d_align = 1;

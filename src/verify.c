@@ -206,7 +206,7 @@ read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
 	char type_number[16];
 	int ndx;
 
-	ES_PRINT(DEBUG, "%s(%p, %p, %d, %p)\n",
+	ES_PRINT(DEBUG, "%s(%p, %p, %"PRIuMAX", %p)\n",
 			__PRETTY_FUNCTION__, opaque, buff, blen, bused );
 
 	dst_ptr = buff;
@@ -311,7 +311,7 @@ more:
 	if( !src_len ) 
 		goto bail;
 
-	ES_PRINT(DEBUG,"read_elf_cb: have data @ %p of len %d bytes\n",
+	ES_PRINT(DEBUG,"read_elf_cb: have data @ %p of len %"PRIuMAX" bytes\n",
 			src_ptr, src_len);
 
 	/* test to see if all the current data block can be submitted */
@@ -348,7 +348,7 @@ more:
 	}
 
 bail:
-	ES_PRINT(DEBUG,"read_elf_cb: returns %d, bytes used set to %d\n",
+	ES_PRINT(DEBUG,"read_elf_cb: returns %d, bytes used set to %"PRIuMAX"\n",
 			eof, *bused);
 	return eof;
 }

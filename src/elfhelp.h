@@ -24,6 +24,7 @@
 #define ELFSIGN_ELFHELP_H
 
 #include <string.h>
+#include <inttypes.h>
 #include "debug.h"
 
 /* 
@@ -51,8 +52,8 @@ create_data(Elf_Scn *scn, void *buf, size_t size, Elf_Type type, size_t align)
 		return data;
 	}
 
-	ES_PRINT(ERROR, "%s: elf_newdata(scn=%p,buf=%p,size=%u,type=%u,"
-			"align=%u): %s\n", __PRETTY_FUNCTION__, scn, 
+	ES_PRINT(ERROR, "%s: elf_newdata(scn=%p,buf=%p,size=%"PRIuMAX",type=%u,"
+			"align=%"PRIuMAX"): %s\n", __PRETTY_FUNCTION__, scn, 
 			buf, size, type, align, elf_errmsg(-1));
 	return NULL;
 }
