@@ -41,7 +41,7 @@ typedef struct verify_session_s
 	elfpgp_session_t	*elfpgp_session;
 
 	/* context for gpgme */
-	GpgmeCtx 		gpgme_ctx;
+	gpgme_ctx_t 		gpgme_ctx;
 
 	/* how far are we in the read */
 	u_int32_t tab_index;
@@ -63,9 +63,9 @@ verify_session_t;
 
 
 static int
-configure_gpg( GpgmeCtx *ctx )
+configure_gpg( gpgme_ctx_t *ctx )
 {
-	GpgmeError err;
+	gpgme_error_t err;
 
 	err = gpgme_new(ctx);
 	if( err ) {
@@ -80,74 +80,30 @@ configure_gpg( GpgmeCtx *ctx )
 }
 
 
-static const char *
-verify_status_string (GpgmeSigStat status)
-{
-	const char *s = "?";
-
-	switch ( status ) {
-	case GPGME_SIG_STAT_NONE:
-		s = "None";
-		break;
-	case GPGME_SIG_STAT_NOSIG:
-		s = "No sig";
-		break;
-	case GPGME_SIG_STAT_GOOD:
-		s = "Good";
-		break;
-	case GPGME_SIG_STAT_BAD:
-		s = "Bad";
-		break;
-	case GPGME_SIG_STAT_NOKEY:
-		s = "No key";
-		break;
-	case GPGME_SIG_STAT_ERROR:
-		s = "Error";
-		break;
-	case GPGME_SIG_STAT_DIFF:
-		s = ">1 sig";
-		break;
-	case GPGME_SIG_STAT_GOOD_EXP:
-		s = "Good/Exp";
-		break;
-	case GPGME_SIG_STAT_GOOD_EXPKEY:
-		s = "Good/ExpKey";
-		break;
-	default:
-		ES_PRINT(ERROR, "%s: unhandled status of %d\n", 
-				__PRETTY_FUNCTION__, status);
-		break;
-	}
-	return s;
-}
-
-
 static void
-print_short_sig_stat ( verify_session_t *s, GpgmeSigStat stat )
+print_short_sig_stat ( verify_session_t *s, gpgme_verify_result_t result,
+		gpgme_error_t verify_error)
 {
-	const char *id=NULL, *alg=NULL, *caps=NULL, *name=NULL, 
+	const char *id=NULL, *alg=NULL, *name=NULL, 
 			*email=NULL, *note=NULL;
-	GpgmeKey key;
+	gpgme_key_t key;
 	int rc;
 
-	if( !(gpgme_get_sig_key( s->gpgme_ctx, 0, &key)) ) {
-		id    = gpgme_key_get_string_attr( key, GPGME_ATTR_KEYID, 
-				NULL, 0 );
-		alg   = gpgme_key_get_string_attr( key, GPGME_ATTR_ALGO, 
-				NULL, 0 );
-		caps  = gpgme_key_get_string_attr( key, GPGME_ATTR_KEY_CAPS, 
-				NULL, 0 );
-		name  = gpgme_key_get_string_attr( key, GPGME_ATTR_NAME, 
-				NULL, 0 );
-		email = gpgme_key_get_string_attr( key, GPGME_ATTR_EMAIL, 
-				NULL, 0 );
-		note  = gpgme_key_get_string_attr( key, GPGME_ATTR_COMMENT, 
-				NULL, 0 );
+	key = gpgme_signers_enum(s->gpgme_ctx, 0);
+	if (key) {
+		id    = key->chain_id;
+		if (key->subkeys)
+			alg   = gpgme_pubkey_algo_name(key->subkeys->pubkey_algo);
+		if (key->uids) {
+			name  = key->uids->name;
+			email = key->uids->email;
+			note  = key->uids->comment;
+		}
 	}
 
 	rc = ES_PRINT(INFO,"%-*s %-8s %s %s (%s) <%s>\n",
 			opts->file_name_max, s->elfpgp_session->file, 
-			verify_status_string(stat),
+			gpg_strerror(verify_error),
 			id, name, note, email);
 
 	/* will show a less verbose output */
@@ -162,40 +118,43 @@ print_short_sig_stat ( verify_session_t *s, GpgmeSigStat stat )
 		}
 		ES_PRINT(NORM, fmt,
 				opts->file_name_max, s->elfpgp_session->file, 
-				verify_status_string(stat),
+				gpg_strerror(verify_error),
 				val);
 	}
 }
 
 
 static void
-print_verbose_sig_stat ( verify_session_t *s, GpgmeSigStat status )
+print_verbose_sig_stat (verify_session_t *s, gpgme_verify_result_t result,
+		gpgme_error_t verify_error)
 {
-	const char *ss;
-	time_t created;
 	int idx;
-	GpgmeKey key;
+	gpgme_key_t key;
 
 	ES_PRINT(DEBUG, "print_verbose_sig_stat: dumping status...\n");
 
-	for(idx=0;(ss=gpgme_get_sig_status(s->gpgme_ctx, idx, &status, &created));
-			idx++) {
-		ES_PRINT(INFO, "sig %d: created: %lu status: %s\n", 
-				idx, (unsigned long)created, 
-				verify_status_string(status) );
-		ES_PRINT(INFO, "sig %d: fpr/keyid=`%s'\n", idx, ss );
-		if ( !gpgme_get_sig_key (s->gpgme_ctx, idx, &key) ) {
-			char *p = gpgme_key_get_as_xml ( key );
-			ES_PRINT(INFO,"sig %d: key object:\n%s\n", idx, p );
-			free (p);
-			gpgme_key_release (key);
-		}
+	for(idx=0; (key = gpgme_signers_enum(s->gpgme_ctx, idx)); idx++) {
+		ES_PRINT(INFO, "sig %d: status: %s\n",
+				idx,
+				gpg_strerror(verify_error));
+		ES_PRINT(INFO, "sig %d: fpr/keyid=`%s' %s <%s>\n",
+				idx, key->chain_id,
+				key->uids->name,
+				key->uids->email);
 	}
 }
 
 
-static int
-read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
+static ssize_t elf_data_read (void* opaque, void *buff, size_t blen);
+static struct gpgme_data_cbs elf_data = {
+	.read = elf_data_read,
+	.write = NULL,
+	.seek = NULL,
+	.release = NULL,
+};
+
+static ssize_t
+elf_data_read (void* opaque, void *buff, size_t blen)
 {
 	verify_session_t *s = (void*)opaque;
 	elfpgp_session_t *es = s->elfpgp_session;
@@ -206,12 +165,11 @@ read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
 	char type_number[16];
 	int ndx;
 
-	ES_PRINT(DEBUG, "%s(%p, %p, %"PRIuMAX", %p)\n",
-			__PRETTY_FUNCTION__, opaque, buff, blen, bused );
+	ES_PRINT(DEBUG, "%s(%p, %p, %"PRIuMAX"\n",
+			__PRETTY_FUNCTION__, opaque, buff, blen);
 
 	dst_ptr = buff;
 	dst_len = blen;
-	*bused = 0;
 
 	if( (eof = s->read_cb_eof) )
 		goto bail;
@@ -293,7 +251,7 @@ more:
 				goto bail;
 			}
 
-			ES_PRINT(INFO,"  SCN %-3d  %-13s  %5d  %s\n", 
+			ES_PRINT(INFO,"  SCN %-3d  %-13s  %5"PRIuMAX"  %s\n", 
 					ndx, tname, s->data->d_size, sname);
 			break;
 
@@ -323,7 +281,6 @@ more:
 			/* otherwise we clear -- probably a .bss section */
 			memset ( dst_ptr, 0, src_len );
 		}
-		*bused += src_len;
 		/* move buffer pointer/size to after new addition */
 		dst_ptr += src_len;
 		dst_len -= src_len;
@@ -342,14 +299,12 @@ more:
 			/* otherwise we clear -- probably a .bss section */
 			memset ( dst_ptr, 0, dst_len );
 		}
-		*bused += dst_len;
 		/* prep for next call */
 		s->scn_offset += dst_len;
 	}
 
 bail:
-	ES_PRINT(DEBUG,"read_elf_cb: returns %d, bytes used set to %"PRIuMAX"\n",
-			eof, *bused);
+	ES_PRINT(DEBUG,"read_elf_cb: returns %d\n", eof);
 	return eof;
 }
 
@@ -384,7 +339,7 @@ init_process_elf( verify_session_t *s )
 			} else {
 				ES_PRINT(NORM, "%-*s %-8s\n", 
 						opts->file_name_max, es->file,
-						verify_status_string (
+						gpgme_strerror(
 							GPGME_SIG_STAT_NOSIG));
 			}
 
@@ -401,7 +356,7 @@ init_process_elf( verify_session_t *s )
 			} else {
 				ES_PRINT(NORM, "%-*s %-8s\n", 
 						opts->file_name_max, es->file,
-						verify_status_string (
+						gpgme_strerror(
 							GPGME_SIG_STAT_NOSIG));
 			}
 
@@ -435,9 +390,9 @@ static int
 process_elf( verify_session_t *s )
 {
 	int ret=-1;
-	GpgmeError err;
-	GpgmeData sig, data;
-	GpgmeSigStat status;
+	gpgme_error_t err;
+	gpgme_data_t sig, data;
+	gpgme_verify_result_t result;
 	elfpgp_session_t *es = s->elfpgp_session;
 
 	/* start processing the .pgptab at the first entry */
@@ -448,7 +403,7 @@ process_elf( verify_session_t *s )
 	ES_PRINT(INFO,"  %-7s  %-13s  %5s  %s\n", 
 			"entry", "type", "size", "name");
 
-	err = gpgme_data_new_with_read_cb ( &data, read_elf_cb, s );
+	err = gpgme_data_new_from_cbs (&data, &elf_data, s);
 	if( err ) {
 		ES_PRINT(ERROR, "gpgme_data_new_with_read_cb: %s\n", 
 				gpgme_strerror(err));
@@ -457,7 +412,7 @@ process_elf( verify_session_t *s )
 
 	ES_PRINT(DEBUG, "process_elf: creating sig gpgme data object\n");
 
-	ES_PRINT(DEBUG, "process_elf: sig is of size %d\n",
+	ES_PRINT(DEBUG, "process_elf: sig is of size %"PRIuMAX"\n",
 			es->pgpsig_data->d_size);
 	err = gpgme_data_new_from_mem( &sig, es->pgpsig_data->d_buf,
 			es->pgpsig_data->d_size, 0 );
@@ -469,16 +424,18 @@ process_elf( verify_session_t *s )
 
 	ES_PRINT(DEBUG, "process_elf: calling gpgme_op_verify\n");
 
-	err = gpgme_op_verify (s->gpgme_ctx, sig, data, &status);
+	err = gpgme_op_verify (s->gpgme_ctx, sig, NULL, data);
 	if( err ) {
 		ES_PRINT(ERROR, "gpgme_op_verify: %s\n", 
 				gpgme_strerror(err));
 		goto bail;
-	}  
+	}
 
-	print_short_sig_stat( s, status );
+	result = gpgme_op_verify_result (s->gpgme_ctx);
+
+	print_short_sig_stat( s, result, err );
 	if( ES_SHOW(DEBUG) )
-		print_verbose_sig_stat( s, status );
+		print_verbose_sig_stat( s, result, err );
 
 	ret=0;
 bail: 

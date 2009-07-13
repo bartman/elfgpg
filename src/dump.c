@@ -157,7 +157,7 @@ dump_pgpsig( dump_session_t *s )
 	ES_PRINT (NORM, "  len = %d bytes\n    ", max);
 
 	for (cnt=1; cnt<=max; cnt++) {
-		static inline const char * separator () {
+		inline const char * separator () {
 			if (cnt>=max) return "\n";
 			if ((cnt & 15) == 0) return "\n    ";
 			if ((cnt & 7) == 0) return "   ";

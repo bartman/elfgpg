@@ -45,7 +45,7 @@ typedef struct sign_session_s
 	/* file being processed */
 	const char *file;
 	int fd;
-	GpgmeCtx gpgme_ctx;
+	gpgme_ctx_t gpgme_ctx;
 
 	void *pgptab_head; /* allocated buffer start */
 	void *pgptab_tail; /* points to next byte to be used */
@@ -89,19 +89,23 @@ linelen (const char *s)
 
 
 static char pass[1024] = {0,};
-  
-static const char *
-passphrase_cb ( void *opaque, const char *desc, void **r_hd )
+
+static gpgme_error_t
+passphrase_cb (void *hook, const char *uid_hint, const char *passphrase_info,
+		int prev_was_bad, int fd)
 {
 	struct termios term;
 	static struct termios termsave;
 	const char *cmd=NULL, *uid=NULL, *info=NULL;
 
-	if( !desc ) {
+fprintf(stderr, "%s: uid_hint = %s\n", __FUNCTION__, uid_hint);
+fprintf(stderr, "%s: passphrase_info = %s\n", __FUNCTION__, passphrase_info);
+
+	if( !passphrase_info ) {
 		/* this is the second callback meant for releasing 
 		 * resources, but we want to keep it to the very end of 
 		 * the signing process */
-		return NULL;
+		return GPG_ERR_CANCELED;
 	}
 
 	ES_PRINT(DEBUG,"%s: getting password\n", __PRETTY_FUNCTION__);
@@ -109,7 +113,7 @@ passphrase_cb ( void *opaque, const char *desc, void **r_hd )
 	/* get the description parts 
 	 * [ code borowed from Sylpheed; thanks to Werner Koch <wk@gnupg.org> ]
 	 */
-	cmd = desc;
+	cmd = passphrase_info;
 	uid = strchr (cmd, '\n');
 	if (uid) {
 		info = strchr (++uid, '\n');
@@ -128,8 +132,9 @@ passphrase_cb ( void *opaque, const char *desc, void **r_hd )
 		pass[0] = 0;
 
 	}else if( strncmp(cmd,"ENTER",5)==0 ) {
-		if( pass[0] ) 
-			return pass;
+		if( pass[0] ) {
+			goto return_password;
+		}
 	}
 
 	/* must get a password... */
@@ -141,36 +146,39 @@ passphrase_cb ( void *opaque, const char *desc, void **r_hd )
 	/* disable echo */
 	if( tcgetattr(fileno(stdin), &termsave) ) {
 		ES_PRINT(ERROR,"tcgetattr() failed: %s\n", strerror(errno) );
-		return NULL;
+		return GPG_ERR_CANCELED;
 	}
 	term = termsave;
 	term.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
 	if( tcsetattr( fileno(stdin), TCSAFLUSH, &term ) ) {
 		ES_PRINT(ERROR,"tcsetattr() failed: %s\n", strerror(errno) );
-		return NULL;
+		return GPG_ERR_CANCELED;
 	}
 
 	/* get the string */
 	if( !fgets(pass, sizeof(pass)-1, stdin) ) {
 		ES_PRINT(ERROR,"passphrase_cb: %s\n",strerror(errno));
-		return NULL;
+		return GPG_ERR_CANCELED;
 	}
 
 	/* reset echo */
 	if( tcsetattr(fileno(stdin), TCSAFLUSH, &termsave) ) {
 		ES_PRINT(ERROR,"tcsetattr() failed: %s\n", strerror(errno) );
-		return NULL;
+		return GPG_ERR_CANCELED;
 	}
 
 	fprintf(stderr, "\n");
 
-	return pass; 
+return_password:
+	if (write(fd, pass, strlen(pass)) < 0)
+		return GPG_ERR_CANCELED;
+	return GPG_ERR_NO_ERROR;
 }
 
 static int
-configure_gpg( GpgmeCtx *ctx )
+configure_gpg( gpgme_ctx_t *ctx )
 {
-	GpgmeError err;
+	gpgme_error_t err;
 
 	ES_PRINT(DEBUG,"%s: gpgme configuration\n", __PRETTY_FUNCTION__);
 
@@ -244,9 +252,16 @@ bail:
 	return err;
 }
 
+static ssize_t elf_data_read (void* opaque, void *buff, size_t blen);
+static struct gpgme_data_cbs elf_data = {
+	.read = elf_data_read,
+	.write = NULL,
+	.seek = NULL,
+	.release = NULL,
+};
 
-static int
-read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
+static ssize_t
+elf_data_read (void* opaque, void *buff, size_t blen)
 {
 	sign_session_t *s = (void*)opaque;
 	int eof;	/* 1 if there is no more data to read */
@@ -256,12 +271,11 @@ read_elf_cb( void* opaque, char *buff, size_t blen, size_t* bused )
 	char type_number[16];
 	int ndx;
 
-	ES_PRINT(DEBUG, "%s(%p, %p, %"PRIuMAX", %p)\n",
-			__PRETTY_FUNCTION__, opaque, buff, blen, bused );
+	ES_PRINT(DEBUG, "%s(%p, %p, %"PRIuMAX")\n",
+			__PRETTY_FUNCTION__, opaque, buff, blen);
 
 	dst_ptr = buff;
 	dst_len = blen;
-	*bused = 0;
 
 	if( (eof = s->read_cb_eof) )
 		goto bail;
@@ -373,7 +387,6 @@ more:
 			/* otherwise we clear -- probably a .bss section */
 			memset ( dst_ptr, 0, src_len );
 		}
-		*bused += src_len;
 		/* move buffer pointer/size to after new addition */
 		dst_ptr += src_len;
 		dst_len -= src_len;
@@ -392,14 +405,13 @@ more:
 			/* otherwise we clear -- probably a .bss section */
 			memset ( dst_ptr, 0, dst_len );
 		}
-		*bused += dst_len;
 		/* prep for next call */
 		s->scn_offset += dst_len;
 	}
 
 bail:
-	ES_PRINT(DEBUG,"read_elf_cb: returns %d, bytes used set to %"PRIuMAX"\n",
-			eof, *bused);
+	ES_PRINT(DEBUG,"read_elf_cb: returns %d\n",
+			eof);
 	return eof;
 }
 
@@ -693,8 +705,8 @@ static int
 generate_pgpsig( sign_session_t *s )
 {
 	int ret=-1;
-	GpgmeError err;
-	GpgmeData in, out;
+	gpgme_error_t err;
+	gpgme_data_t in, out;
 	size_t oslen;
 
 	/* start processing creating the .pgptab at elf header */
@@ -705,7 +717,7 @@ generate_pgpsig( sign_session_t *s )
 	ES_PRINT(INFO,"  %-7s  %-13s  %5s  %s\n", 
 			"entry", "type", "size", "name");
 
-	err = gpgme_data_new_with_read_cb ( &in, read_elf_cb, s );
+	err = gpgme_data_new_from_cbs (&in, &elf_data, s);
 	if( err ) {
 		ES_PRINT(ERROR, "gpgme_data_new: %s\n", gpgme_strerror(err));
 		goto bail;
@@ -724,13 +736,13 @@ generate_pgpsig( sign_session_t *s )
 	}
 
 	oslen = s->slen = sizeof(s->sig);
-	err = gpgme_data_read ( out, s->sig, oslen, &s->slen );
+	err = gpgme_data_read (out, s->sig, oslen);
 	if( err ) {
 		if( oslen==s->slen ) {
 			ES_PRINT(ERROR, "sign_gpg: signature buffer was "
 					"too short\n");
 			goto bail;
-		} else if ( err!=GPGME_EOF ) {
+		} else if ( err!=GPG_ERR_EOF ) {
 			ES_PRINT(ERROR, "gpgme_data_read: %s\n", 
 					gpgme_strerror(err));
 			goto bail;
@@ -782,7 +794,7 @@ do_elfsign( const char *file, int fd )
 	int ret;
 	int loop = 0;
 	sign_session_t session;
-	GpgmeCtx gpgme_ctx;
+	gpgme_ctx_t gpgme_ctx;
 
 	ES_PRINT(DEBUG,"elfsign( '%s', %d )...\n"
 			"\tverbose = %d\n"
