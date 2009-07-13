@@ -41,7 +41,7 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([errno.h fcntl.h stdio.h stdlib.h string.h sys/stat.h sys/types.h termios.h unistd.h getopt.h],, [
 	echo "ERROR:  You need libc to build elfpgp.";
 	AC_MSG_ERROR([Fatal:  libc headers not found.])])
-AC_CHECK_HEADERS(libelf/libelf.h,, [
+AC_CHECK_HEADERS(libelf.h,, [
 	echo "ERROR:  You need libelf to build elfpgp.";
 	AC_MSG_ERROR([Fatal:  elf headers not found.])])
 AC_CHECK_HEADERS(gpgme.h,, [
