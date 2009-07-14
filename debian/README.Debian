@@ -1,0 +1,13 @@
+elfpgp for Debian
+-----------------
+
+Elfpgp signes any elf binary file (executable or library) with a pgp signature
+by adding two elf sections .pgptab and .pgpsig.  
+
+You can find more info on this program from the homepage:
+
+	http://www.jukie.net/~bart/elfpgp
+
+B.
+
+ -- Bart Trojanowski <bart@jukie.net>, Sun, 27 Apr 2003 18:54:11 -0400

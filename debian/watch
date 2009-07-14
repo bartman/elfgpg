@@ -1,0 +1,4 @@
+# Site		Directory		Pattern			Version	Script
+version=2
+http://www.jukie.net/~bart/elfpgp/downloads/	\
+  elfpgp-(.*)\.tar\.gz

@@ -1,0 +1,15 @@
+Source: elfpgp
+Section: utils
+Priority: optional
+Maintainer: Bart Trojanowski <bart@jukie.net>
+Build-Depends: debhelper (>> 4.0.0), libgpgme-dev (>= 0.3.0), libelfg0-dev (>= 0.8.0), autoconf (>= 2.13), automake1.4 | automake1.5 | automake1.6 | automake1.7, docbook-to-man
+Standards-Version: 3.5.8
+
+Package: elfpgp
+Architecture: any
+Depends: ${shlibs:Depends} ${misc:Depends}
+Description: PGP sign and verify elf binary files (with GnuPG)
+ elfpgp will sign any binary elf file (executable or library) with a PGP 
+ signature (using GnuPG).  Generated signatures can be later verified to 
+ detect changes in a binary, or check for trust relationship between the 
+ builder of the binary and yourself (via a web of trust).
