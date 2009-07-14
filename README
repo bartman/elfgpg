@@ -1,12 +1,15 @@
-elfpgp
+elfgpg
 ======
 
 1. About
 
+  A simple (Linux) utility to inject/verify PGP signatures in elf files
+  using GPG.
+
   This is an alpha release... please see website for details.
 
-	http://www.jukie.net/~bart/elfpgp
-	http://elfpgp.sourceforge.net
+	http://www.jukie.net/~bart/elfgpg
+        http://github.com/bartman/elfgpg
 
 2. License & Warranty
   

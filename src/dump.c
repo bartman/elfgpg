@@ -30,7 +30,7 @@
 
 #include "options.h"
 #include "verify.h"
-#include "elfpgp.h"
+#include "elfgpg.h"
 #include "elfhelp.h"
 #include "elfstrings.h"
 

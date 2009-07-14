@@ -32,13 +32,13 @@
 
 #include "options.h"
 #include "verify.h"
-#include "elfpgp.h"
+#include "elfgpg.h"
 #include "elfhelp.h"
 #include "elfstrings.h"
 
 typedef struct verify_session_s 
 {
-	elfpgp_session_t	*elfpgp_session;
+	elfgpg_session_t	*elfgpg_session;
 
 	/* context for gpgme */
 	gpgme_ctx_t 		gpgme_ctx;
@@ -102,7 +102,7 @@ print_short_sig_stat ( verify_session_t *s, gpgme_verify_result_t result,
 	}
 
 	rc = ES_PRINT(INFO,"%-*s %-8s %s %s (%s) <%s>\n",
-			opts->file_name_max, s->elfpgp_session->file, 
+			opts->file_name_max, s->elfgpg_session->file, 
 			gpg_strerror(verify_error),
 			id, name, note, email);
 
@@ -117,7 +117,7 @@ print_short_sig_stat ( verify_session_t *s, gpgme_verify_result_t result,
 			val = id;
 		}
 		ES_PRINT(NORM, fmt,
-				opts->file_name_max, s->elfpgp_session->file, 
+				opts->file_name_max, s->elfgpg_session->file, 
 				gpg_strerror(verify_error),
 				val);
 	}
@@ -157,7 +157,7 @@ static ssize_t
 elf_data_read (void* opaque, void *buff, size_t blen)
 {
 	verify_session_t *s = (void*)opaque;
-	elfpgp_session_t *es = s->elfpgp_session;
+	elfgpg_session_t *es = s->elfgpg_session;
 	int eof;	/* 1 if there is no more data to read */
 	void *src_ptr, *dst_ptr;
 	size_t src_len, dst_len;
@@ -313,7 +313,7 @@ static int
 init_process_elf( verify_session_t *s )
 {
 	int err;
-	elfpgp_session_t *es = s->elfpgp_session;
+	elfgpg_session_t *es = s->elfgpg_session;
 
 	es->elf = elf_begin( es->fd, ELF_C_READ, NULL );
 	switch( elf_kind(es->elf) ) {
@@ -393,7 +393,7 @@ process_elf( verify_session_t *s )
 	gpgme_error_t err;
 	gpgme_data_t sig, data;
 	gpgme_verify_result_t result;
-	elfpgp_session_t *es = s->elfpgp_session;
+	elfgpg_session_t *es = s->elfgpg_session;
 
 	/* start processing the .pgptab at the first entry */
 	s->tab_index = 0;
@@ -455,7 +455,7 @@ int
 do_elfverify( const char *file, int fd )
 {
 	int ret;
-	elfpgp_session_t elfpgp_session;
+	elfgpg_session_t elfgpg_session;
 	verify_session_t session;
 
 	ES_PRINT(DEBUG,"elfverify( '%s', %d )...\n"
@@ -468,12 +468,12 @@ do_elfverify( const char *file, int fd )
 			opts->verbose, opts->force, opts->keyname, 
 			opts->keyring, opts->algname );
 
-	memset(&elfpgp_session, 0, sizeof(elfpgp_session_t));
-	elfpgp_session.file = file;
-	elfpgp_session.fd = fd;
+	memset(&elfgpg_session, 0, sizeof(elfgpg_session_t));
+	elfgpg_session.file = file;
+	elfgpg_session.fd = fd;
 
 	memset(&session, 0, sizeof(verify_session_t));
-	session.elfpgp_session = &elfpgp_session;
+	session.elfgpg_session = &elfgpg_session;
 
 	ret = configure_gpg( &session.gpgme_ctx );
 
@@ -483,7 +483,7 @@ do_elfverify( const char *file, int fd )
 	if( ! ret )
 		ret = process_elf( &session );
 
-	elf_end(elfpgp_session.elf);
+	elf_end(elfgpg_session.elf);
 	gpgme_release( session.gpgme_ctx );
 
 	return ret; 

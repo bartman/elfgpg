@@ -24,10 +24,10 @@ INCLUDES		=  -I$(top_builddir)/src -I$(top_srcdir)/src \
 
 LIBS			= -lelf -lgpgme
 
-bin_PROGRAMS 		= elfpgp
-elfpgp_SOURCES 		= main.c sign.c verify.c dump.c elfstrings.c
-EXTRA_elfpgp_SOURCES	= options.h sign.h verify.h dump.h \
-				debug.h elfhelp.h elfpgp.h \
+bin_PROGRAMS 		= elfgpg
+elfgpg_SOURCES 		= main.c sign.c verify.c dump.c elfstrings.c
+EXTRA_elfgpg_SOURCES	= options.h sign.h verify.h dump.h \
+				debug.h elfhelp.h elfgpg.h \
 				elfstrings.h
 
 AM_CFLAGS		= -O2 -Wall -Werror

@@ -31,7 +31,7 @@
 
 #include "options.h"
 #include "sign.h"
-#include "elfpgp.h"
+#include "elfgpg.h"
 #include "elfhelp.h"
 #include "elfstrings.h"
 
@@ -461,12 +461,12 @@ open_elf_file( sign_session_t *s )
 }
 
 
-/* prepare_elfpgp_sections makes sure that .pgptab and .pgpsig sections
+/* prepare_elfgpg_sections makes sure that .pgptab and .pgpsig sections
 * exist in elf object -- if they do not then the object is updated 
 * (not the file); the sign_session_t *s pgp{tab,sig}_{scn,tab} are also
 * updated appropriately; */
 static int
-prepare_elfpgp_sections( sign_session_t *s )
+prepare_elfgpg_sections( sign_session_t *s )
 {
 	int err = 1;
 
@@ -826,7 +826,7 @@ again:
 		goto bail;
 	}
 
-	ret = prepare_elfpgp_sections( &session );
+	ret = prepare_elfgpg_sections( &session );
 	if (ret) {
 		ES_PRINT (ERROR, "%s: failed to prepare sections\n", file);
 		goto bail;

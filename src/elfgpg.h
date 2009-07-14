@@ -25,7 +25,7 @@
 
 #include <libelf.h>
 
-/* new sections that will be used by elfpgpg */
+/* new sections that will be used by elfgpg */
 
 #define SHT_PGPTAB  (SHT_LOUSER|('p'<<16)|('g'<<8)|'p')
 #define SHT_PGPSIG  SHT_PGPTAB+1

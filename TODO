@@ -1,5 +1,5 @@
-- prepare_elfpgp_sections need cleanup of something fails.
-- elfpgp --remove is needed
+- prepare_elfgpg_sections need cleanup of something fails.
+- elfgpg --remove is needed
 - write a man page
 - write up the file format (extra elf sections)
 - should sign the .pgptab section as well
