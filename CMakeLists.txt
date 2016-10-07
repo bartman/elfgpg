@@ -1,0 +1,35 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.3)
+
+# Global vars
+SET(CMAKE_PROJECT_NAME "elfgpg")
+SET(EXECUTABLE_NAME "elfgpg")
+
+SET(EXECUTABLE_VERSION_MAJOR "1")
+SET(EXECUTABLE_VERSION_MINOR "0")
+SET(EXECUTABLE_VERSION_PATCH "0")
+
+SET(CMAKE_MODULE_PATH
+  ${CMAKE_SOURCE_DIR}/CMake/Modules
+ )
+
+SET(EXECUTABLE_VERSION "${EXECUTABLE_VERSION_MAJOR}.${EXECUTABLE_VERSION_MINOR}.${EXECUTABLE_VERSION_PATCH}")
+
+#Begin Project
+PROJECT(${CMAKE_PROJECT_NAME})
+
+MESSAGE(STATUS "Current built type: ${CMAKE_BUILD_TYPE}")
+MESSAGE(STATUS "Current build type flags: ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}")
+MESSAGE(STATUS "Configuring application ${APPLICATION_NAME}")
+
+set(CMAKE_MACOSX_RPATH 1)
+#Library
+include_directories( lib )
+add_subdirectory( lib )
+
+#Main Binary
+include_directories( src )
+add_subdirectory( src )
+
+
+
+

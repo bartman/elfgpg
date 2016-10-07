@@ -24,8 +24,6 @@
 
 #define _GNU_SOURCE
 
-#include "config.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -42,6 +40,11 @@
 #include "sign.h"
 #include "verify.h"
 #include "dump.h"
+
+#define PACKAGE "elfgpg"
+#define VERSION "1.0"
+
+
 
 elfsign_options_t *opts;
 
