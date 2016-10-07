@@ -22,7 +22,7 @@ INCLUDES		=  -I$(top_builddir)/src -I$(top_srcdir)/src \
 			-I$(top_builddir)/lib -I$(top_srcdir)/lib \
 			-I /usr/include/libelf
 
-LIBS			= -lelf -lgpgme
+LIBS			= -lelf -lgpgme -lgpg-error
 
 bin_PROGRAMS 		= elfgpg
 elfgpg_SOURCES 		= main.c sign.c verify.c dump.c elfstrings.c
