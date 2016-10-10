@@ -84,7 +84,7 @@ static void
 print_short_sig_stat ( verify_session_t *s, gpgme_verify_result_t result,
 		gpgme_error_t verify_error)
 {
-	const char *id=NULL, *alg=NULL, *name=NULL, 
+	const char *id=NULL, *name=NULL, 
 			*email=NULL, *note=NULL;
 	gpgme_key_t key;
 	int rc;
@@ -92,8 +92,9 @@ print_short_sig_stat ( verify_session_t *s, gpgme_verify_result_t result,
 	key = gpgme_signers_enum(s->gpgme_ctx, 0);
 	if (key) {
 		id    = key->chain_id;
-		if (key->subkeys)
-			alg   = gpgme_pubkey_algo_name(key->subkeys->pubkey_algo);
+        //alg was unused thus it's pointless to set it
+		//if (key->subkeys)
+		//	alg   = gpgme_pubkey_algo_name(key->subkeys->pubkey_algo);
 		if (key->uids) {
 			name  = key->uids->name;
 			email = key->uids->email;
